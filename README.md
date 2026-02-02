@@ -333,14 +333,18 @@ Please check `application.properties` to see which connection pool settings can 
 NOTE: We keep backwards compatibility until one of the next releases to ensure that things are working as expected. Environment variables prefixed `fineract_tenants_*` can still be used to configure the database connection, but we strongly encourage using `FINERACT_HIKARI_*` with more options.
 
 
-VERSIONS
+RELEASES
 ============
 
-A release version is derived from source control. The version will include `-SNAPSHOT` unless the current branch looks like a release or release maintenance branch. See `gitVersioning` settings in `build.gradle` for details.
+[Official releases](https://fineract.apache.org/#downloads) are created quarterly, at the end of each quarter. Our [documented release procedure](https://fineract.apache.org/docs/current/#_releases) follows the [ASF release policy](https://www.apache.org/legal/release-policy.html).
 
-The latest stable release can be viewed on the develop branch: [Latest Release on Develop](https://github.com/apache/fineract/tree/develop "Latest Release").
+See <https://cwiki.apache.org/confluence/display/FINERACT/Fineract+Releases> for an archive of historical release notes along with JIRA issues relevant to each release.
 
-The progress of this project can be viewed in the left hand navigation under [this page of the wiki](https://cwiki.apache.org/confluence/display/FINERACT/Fineract+Releases)
+See <https://github.com/apache/fineract/releases> for a list of PRs and contributors for each release.
+
+EOL/unsupported releases are [archived](https://www.apache.org/legal/release-policy.html#archived).
+
+Versioned build products created from the `develop` branch will include `-SNAPSHOT`. See [related settings](https://github.com/qoomon/gradle-git-versioning-plugin) near `version` and `gitVersioning` in `build.gradle` for details.
 
 
 LICENSE
