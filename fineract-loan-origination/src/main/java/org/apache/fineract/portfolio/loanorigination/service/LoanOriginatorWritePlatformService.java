@@ -28,4 +28,8 @@ public interface LoanOriginatorWritePlatformService {
     CommandProcessingResult update(Long id, JsonCommand command);
 
     CommandProcessingResult delete(Long id);
+
+    CommandProcessingResult attachOriginatorToLoan(Long loanId, Long originatorId);
+
+    CommandProcessingResult detachOriginatorFromLoan(Long loanId, Long originatorId);
 }

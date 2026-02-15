@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.UUID;
 import org.apache.fineract.client.feign.FineractFeignClient;
 import org.apache.fineract.client.feign.util.CallFailedRuntimeException;
+import org.apache.fineract.client.models.GetLoanOriginatorTemplateResponse;
 import org.apache.fineract.client.models.GetLoanOriginatorsResponse;
 import org.apache.fineract.client.models.PostLoanOriginatorsRequest;
 import org.apache.fineract.client.models.PostLoanOriginatorsResponse;
@@ -104,5 +105,37 @@ public class FeignLoanOriginatorHelper {
 
     public static String generateUniqueExternalId() {
         return "EXT-" + UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    public void attachOriginatorToLoan(Long loanId, Long originatorId) {
+        ok(() -> {
+            fineractClient.loanOriginators().attachOriginatorToLoan(loanId, originatorId);
+            return null;
+        });
+    }
+
+    public CallFailedRuntimeException attachOriginatorToLoanExpectingError(Long loanId, Long originatorId) {
+        return fail(() -> {
+            fineractClient.loanOriginators().attachOriginatorToLoan(loanId, originatorId);
+            return null;
+        });
+    }
+
+    public void detachOriginatorFromLoan(Long loanId, Long originatorId) {
+        ok(() -> {
+            fineractClient.loanOriginators().detachOriginatorFromLoan(loanId, originatorId);
+            return null;
+        });
+    }
+
+    public CallFailedRuntimeException detachOriginatorFromLoanExpectingError(Long loanId, Long originatorId) {
+        return fail(() -> {
+            fineractClient.loanOriginators().detachOriginatorFromLoan(loanId, originatorId);
+            return null;
+        });
+    }
+
+    public GetLoanOriginatorTemplateResponse retrieveLoanOriginatorTemplate() {
+        return ok(() -> fineractClient.loanOriginators().retrieveLoanOriginatorTemplate());
     }
 }

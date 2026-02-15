@@ -237,7 +237,7 @@ dependencyManagement {
 
         dependency 'com.mysql:mysql-connector-j:9.3.0'
 
-        dependency 'org.assertj:assertj-core:3.26.3'
+        dependency 'org.assertj:assertj-core:3.27.7'
 
         dependency 'org.apache.commons:commons-math3:3.6.1'
         dependency 'commons-beanutils:commons-beanutils:1.11.0'
@@ -279,5 +279,9 @@ dependencyManagement {
         dependency 'io.netty:netty-codec-http:4.1.129.Final'
         // Force lz4-java version: CVE-2025-12183
         dependency 'at.yawk.lz4:lz4-java:1.10.1'
+        // Force tomcat-embed-core version: CVE-2025-24813
+        dependency 'org.apache.tomcat.embed:tomcat-embed-core:10.1.47'
+        dependency 'org.apache.tomcat.embed:tomcat-embed-el:10.1.47'
+        dependency 'org.apache.tomcat.embed:tomcat-embed-websocket:10.1.47'
     }
 }

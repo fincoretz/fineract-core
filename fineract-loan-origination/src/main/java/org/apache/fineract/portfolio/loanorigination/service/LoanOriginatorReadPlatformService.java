@@ -20,6 +20,7 @@ package org.apache.fineract.portfolio.loanorigination.service;
 
 import java.util.List;
 import org.apache.fineract.portfolio.loanorigination.data.LoanOriginatorData;
+import org.apache.fineract.portfolio.loanorigination.data.LoanOriginatorTemplateData;
 
 public interface LoanOriginatorReadPlatformService {
 
@@ -30,4 +31,8 @@ public interface LoanOriginatorReadPlatformService {
     LoanOriginatorData retrieveByExternalId(String externalId);
 
     Long resolveIdByExternalId(String externalId);
+
+    List<LoanOriginatorData> retrieveByLoanId(Long loanId);
+
+    LoanOriginatorTemplateData retrieveTemplate();
 }

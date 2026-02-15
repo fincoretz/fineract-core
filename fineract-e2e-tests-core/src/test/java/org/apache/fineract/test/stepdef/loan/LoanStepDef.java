@@ -168,6 +168,7 @@ import org.apache.fineract.test.messaging.store.EventStore;
 import org.apache.fineract.test.stepdef.AbstractStepDef;
 import org.apache.fineract.test.support.TestContextKey;
 import org.assertj.core.api.SoftAssertions;
+import org.junit.jupiter.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
@@ -1621,6 +1622,7 @@ public class LoanStepDef extends AbstractStepDef {
                 .isEqualTo(statusExpected);//
         eventCheckHelper.disburseLoanEventCheck(loanId);
         eventCheckHelper.loanDisbursalTransactionEventCheck(loanDisburseResponse);
+        eventCheckHelper.loanBalanceChangedEventCheck(loanId);
     }
 
     @And("Admin successfully add disbursement detail to the loan on {string} with {double} EUR transaction amount")
@@ -2174,6 +2176,15 @@ public class LoanStepDef extends AbstractStepDef {
         assertThat(lastPaymentAmountActual)
                 .as(ErrorMessageHelper.wrongLastPaymentAmount(lastPaymentAmountActual, lastPaymentAmountExpected))
                 .isEqualTo(lastPaymentAmountExpected);
+    }
+
+    @Then("Loan has {int} active number of terms")
+    public void loanActualNoTermCheck(Integer activeNoTermExpected) {
+        PostLoansResponse loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        Long loanId = loanCreateResponse.getLoanId();
+        GetLoansLoanIdResponse loanIdResponse = ok(() -> fineractClient.loans().retrieveLoan(loanId, Map.of()));
+        Assertions.assertNotNull(loanIdResponse);
+        Assertions.assertEquals(activeNoTermExpected, loanIdResponse.getActualNoTerm());
     }
 
     @Then("Loan Repayment schedule has {int} periods, with the following data for periods:")
@@ -3150,7 +3161,7 @@ public class LoanStepDef extends AbstractStepDef {
         PostLoansResponse loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId = loanResponse.getLoanId();
 
-        String reversalExternalId = Utils.randomNameGenerator("reversalExtId_", 3);
+        String reversalExternalId = Utils.randomStringGenerator("reversalExtId_", 10);
         PostLoansLoanIdTransactionsRequest chargeOffUndoRequest = LoanRequestFactory.defaultUndoChargeOffRequest()
                 .reversalExternalId(reversalExternalId);
 
@@ -5913,6 +5924,13 @@ public class LoanStepDef extends AbstractStepDef {
                 .filter(r -> r.getRelationType().equals(relationshipType)).toList();
 
         assertEquals(Integer.valueOf(numberOfRelations), relationshipOptional.size(), "Missed relationship for transaction");
+    }
+
+    @When("Call Internal API to remove progressive loan model by loan Id")
+    public void callInternalAPIToRemoveProgressiveLoanModelByLoanId() {
+        final PostLoansResponse loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        final long loanId = loanCreateResponse.getLoanId();
+        ok(() -> fineractClient.progressiveLoan().deleteModel(loanId));
     }
 
     public static AdvancedPaymentData editPaymentAllocationFutureInstallment(String transactionType, String futureInstallmentAllocationRule,

@@ -1027,6 +1027,8 @@ final class LoansApiResourceSwagger {
             @Schema(example = "12")
             public Integer pastDueDays;
             @Schema(example = "[2022, 07, 01]")
+            public LocalDate pastDueDate;
+            @Schema(example = "[2022, 07, 01]")
             public LocalDate nextPaymentDueDate;
             @Schema(example = "123.23")
             public BigDecimal nextPaymentAmount;
@@ -1286,6 +1288,8 @@ final class LoansApiResourceSwagger {
         public StringEnumOptionData buyDownFeeStrategy;
         @Schema(example = "FEE")
         public StringEnumOptionData buyDownFeeIncomeType;
+        @Schema(example = "6")
+        public Integer actualNoTerm;
     }
 
     @Schema(description = "GetLoansResponse")

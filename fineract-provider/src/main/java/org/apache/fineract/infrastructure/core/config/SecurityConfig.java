@@ -40,6 +40,7 @@ import org.apache.fineract.infrastructure.core.service.MDCWrapper;
 import org.apache.fineract.infrastructure.instancemode.filter.FineractInstanceModeApiFilter;
 import org.apache.fineract.infrastructure.jobs.filter.LoanCOBApiFilter;
 import org.apache.fineract.infrastructure.jobs.filter.LoanCOBFilterHelper;
+import org.apache.fineract.infrastructure.jobs.filter.ProgressiveLoanModelCheckerFilter;
 import org.apache.fineract.infrastructure.security.data.PlatformRequestLog;
 import org.apache.fineract.infrastructure.security.filter.TenantAwareBasicAuthenticationFilter;
 import org.apache.fineract.infrastructure.security.filter.TwoFactorAuthenticationFilter;
@@ -113,6 +114,8 @@ public class SecurityConfig {
     private LoanCOBFilterHelper loanCOBFilterHelper;
     @Autowired
     private IdempotencyStoreHelper idempotencyStoreHelper;
+    @Autowired
+    ProgressiveLoanModelCheckerFilter progressiveLoanModelCheckerFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -157,6 +160,50 @@ public class SecurityConfig {
                     .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_READ, "READ_CURRENCY")
                     .requestMatchers(API_MATCHER.matcher(HttpMethod.POST, "/api/*/currencies"))
                     .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "UPDATE_CURRENCY")
+                    // notes: read
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.GET, "/api/*/clients/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_READ, "READ_CLIENTNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.GET, "/api/*/loans/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_READ, "READ_LOANNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.GET, "/api/*/loanTransactions/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_READ, "READ_LOANTRANSACTIONNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.GET, "/api/*/savings/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_READ, "READ_SAVINGNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.GET, "/api/*/groups/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_READ, "READ_GROUPNOTE")
+                    // notes: create
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.POST, "/api/*/clients/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "CREATE_CLIENTNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.POST, "/api/*/loans/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "CREATE_LOANNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.POST, "/api/*/loanTransactions/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "CREATE_LOANTRANSACTIONNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.POST, "/api/*/savings/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "CREATE_SAVINGNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.POST, "/api/*/groups/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "CREATE_GROUPNOTE")
+                    // notes: update
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.PUT, "/api/*/clients/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "UPDATE_CLIENTNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.PUT, "/api/*/loans/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "UPDATE_LOANNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.PUT, "/api/*/loanTransactions/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "UPDATE_LOANTRANSACTIONNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.PUT, "/api/*/savings/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "UPDATE_SAVINGNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.PUT, "/api/*/groups/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "UPDATE_GROUPNOTE")
+                    // notes: delete
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.DELETE, "/api/*/clients/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "DELETE_CLIENTNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.DELETE, "/api/*/loans/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "DELETE_LOANNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.DELETE, "/api/*/loanTransactions/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "DELETE_LOANTRANSACTIONNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.DELETE, "/api/*/savings/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "DELETE_SAVINGNOTE")
+                    .requestMatchers(API_MATCHER.matcher(HttpMethod.DELETE, "/api/*/groups/*/notes"))
+                    .hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_WRITE, "DELETE_GROUPNOTE")
 
                     .requestMatchers(API_MATCHER.matcher(HttpMethod.POST, "/api/*/twofactor/validate")).fullyAuthenticated()
                     .requestMatchers(API_MATCHER.matcher("/api/*/twofactor")).fullyAuthenticated()
@@ -172,8 +219,10 @@ public class SecurityConfig {
         if (loanCOBFilterHelper != null) {
             http.addFilterAfter(loanCOBApiFilter(), FineractInstanceModeApiFilter.class).addFilterAfter(idempotencyStoreFilter(),
                     LoanCOBApiFilter.class);
+            http.addFilterBefore(progressiveLoanModelCheckerFilter, LoanCOBApiFilter.class);
         } else {
             http.addFilterAfter(idempotencyStoreFilter(), FineractInstanceModeApiFilter.class);
+            http.addFilterAfter(progressiveLoanModelCheckerFilter, FineractInstanceModeApiFilter.class);
         }
         if (fineractProperties.getIpTracking().isEnabled()) {
             http.addFilterAfter(callerIpTrackingFilter(), RequestResponseFilter.class);
