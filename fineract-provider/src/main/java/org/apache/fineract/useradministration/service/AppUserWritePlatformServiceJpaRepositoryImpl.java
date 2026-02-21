@@ -32,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.fineract.commands.service.CommandWrapperBuilder;
+import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
@@ -48,7 +49,6 @@ import org.apache.fineract.organisation.staff.domain.Staff;
 import org.apache.fineract.organisation.staff.domain.StaffRepositoryWrapper;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
-import org.apache.fineract.useradministration.api.AppUserApiConstant;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.apache.fineract.useradministration.domain.AppUserPreviousPassword;
 import org.apache.fineract.useradministration.domain.AppUserPreviousPasswordRepository;
@@ -83,6 +83,7 @@ public class AppUserWritePlatformServiceJpaRepositoryImpl implements AppUserWrit
     private final AppUserPreviousPasswordRepository appUserPreviewPasswordRepository;
     private final StaffRepositoryWrapper staffRepositoryWrapper;
     private final ClientRepositoryWrapper clientRepositoryWrapper;
+    private final ConfigurationDomainService configurationDomainService;
 
     @Override
     @Transactional
@@ -126,6 +127,9 @@ public class AppUserWritePlatformServiceJpaRepositoryImpl implements AppUserWrit
             }
 
             AppUser appUser = AppUser.fromJson(userOffice, linkedStaff, allRoles, clients, command);
+            if (this.configurationDomainService.isForcePasswordResetOnFirstLoginEnabled()) {
+                appUser.updatePasswordResetRequired(true);
+            }
 
             final Boolean sendPasswordToEmail = command.booleanObjectValueOfParameterNamed("sendPasswordToEmail");
             this.userDomainService.create(appUser, sendPasswordToEmail);
@@ -159,12 +163,14 @@ public class AppUserWritePlatformServiceJpaRepositoryImpl implements AppUserWrit
     @Caching(evict = { @CacheEvict(value = "users", allEntries = true), @CacheEvict(value = "usersByUsername", allEntries = true) })
     public CommandProcessingResult changeUserPassword(final Long userId, final JsonCommand command) {
         try {
-            this.context.authenticatedUser(new CommandWrapperBuilder().updateUser(null).build());
-            this.fromApiJsonDeserializer.validateForChangePassword(command.json(), this.context.authenticatedUser());
+            this.context.authenticatedUser(new CommandWrapperBuilder().changeUserPassword(userId).build());
+            this.fromApiJsonDeserializer.validateForChangePassword(command.json(),
+                    this.context.authenticatedUser(new CommandWrapperBuilder().changeUserPassword(userId).build()));
             final AppUser userToUpdate = this.appUserRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
             final AppUserPreviousPassword currentPasswordToSaveAsPreview = getCurrentPasswordToSaveAsPreview(userToUpdate, command);
             final Map<String, Object> changes = userToUpdate.changePassword(command, this.platformPasswordEncoder);
             if (!changes.isEmpty()) {
+                userToUpdate.updatePasswordResetRequired(false);
                 this.appUserRepository.saveAndFlush(userToUpdate);
                 if (currentPasswordToSaveAsPreview != null) {
                     this.appUserPreviewPasswordRepository.save(currentPasswordToSaveAsPreview);
@@ -189,9 +195,9 @@ public class AppUserWritePlatformServiceJpaRepositoryImpl implements AppUserWrit
     @Caching(evict = { @CacheEvict(value = "users", allEntries = true), @CacheEvict(value = "usersByUsername", allEntries = true) })
     public CommandProcessingResult updateUser(final Long userId, final JsonCommand command) {
         try {
-            this.context.authenticatedUser(new CommandWrapperBuilder().updateUser(null).build());
+            final AppUser currentUser = this.context.authenticatedUser(new CommandWrapperBuilder().updateUser(null).build());
 
-            this.fromApiJsonDeserializer.validateForUpdate(command.json(), this.context.authenticatedUser());
+            this.fromApiJsonDeserializer.validateForUpdate(command.json(), currentUser);
 
             final AppUser userToUpdate = this.appUserRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
@@ -237,6 +243,10 @@ public class AppUserWritePlatformServiceJpaRepositoryImpl implements AppUserWrit
             }
 
             if (!changes.isEmpty()) {
+                if ((changes.containsKey("password") || changes.containsKey("passwordEncoded")) && !currentUser.getId().equals(userId)
+                        && this.configurationDomainService.isForcePasswordResetOnFirstLoginEnabled()) {
+                    userToUpdate.updatePasswordResetRequired(true);
+                }
                 this.appUserRepository.saveAndFlush(userToUpdate);
 
                 if (currentPasswordToSaveAsPreview != null) {
@@ -269,12 +279,20 @@ public class AppUserWritePlatformServiceJpaRepositoryImpl implements AppUserWrit
         AppUserPreviousPassword currentPasswordToSaveAsPreview = null;
 
         if (passWordEncodedValue != null) {
-            PageRequest pageRequest = PageRequest.of(0, AppUserApiConstant.numberOfPreviousPasswords, Sort.Direction.DESC, "removalDate");
-            final List<AppUserPreviousPassword> nLastUsedPasswords = this.appUserPreviewPasswordRepository.findByUserId(user.getId(),
-                    pageRequest);
-            for (AppUserPreviousPassword aPreviewPassword : nLastUsedPasswords) {
-                if (aPreviewPassword.getPassword().equals(passWordEncodedValue)) {
-                    throw new PasswordPreviouslyUsedException();
+            final Integer passwordReuseRestrictionCount = this.configurationDomainService.getPasswordReuseRestrictionCount();
+            if (passwordReuseRestrictionCount != null) {
+                List<AppUserPreviousPassword> previousPasswords;
+                if (passwordReuseRestrictionCount == 0) {
+                    previousPasswords = this.appUserPreviewPasswordRepository.findByUserId(user.getId(),
+                            PageRequest.of(0, Integer.MAX_VALUE, Sort.Direction.DESC, "removalDate"));
+                } else {
+                    PageRequest pageRequest = PageRequest.of(0, passwordReuseRestrictionCount, Sort.Direction.DESC, "removalDate");
+                    previousPasswords = this.appUserPreviewPasswordRepository.findByUserId(user.getId(), pageRequest);
+                }
+                for (AppUserPreviousPassword aPreviewPassword : previousPasswords) {
+                    if (aPreviewPassword.getPassword().equals(passWordEncodedValue)) {
+                        throw new PasswordPreviouslyUsedException();
+                    }
                 }
             }
 
