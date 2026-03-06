@@ -54,6 +54,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.reaging.LoanReAgeInteres
 import org.apache.fineract.portfolio.loanaccount.domain.reaging.LoanReAgeParameter;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanApplicationTerms;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleModelRepaymentPeriod;
+import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleProcessingType;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.ScheduledDateGenerator;
 import org.apache.fineract.portfolio.loanproduct.calc.data.EmiAdjustment;
 import org.apache.fineract.portfolio.loanproduct.calc.data.EmiChangeOperation;
@@ -524,10 +525,15 @@ public final class ProgressiveEMICalculator implements EMICalculator {
                         false)); //
             }
         }
-
+        Money duePrincipal = repaymentPeriod.getDuePrincipal();
+        Money dueInterest = repaymentPeriod.getDueInterest();
+        if (scheduleModel.loanProductRelatedDetail().getLoanScheduleProcessingType() == LoanScheduleProcessingType.VERTICAL
+                && notFullyRepaidRepaymentPeriodCount > 1) {
+            duePrincipal = repaymentPeriod.getEmiPlusCreditedAmountsPlusFutureUnrecognizedInterest();
+        }
         return new PeriodDueDetails(repaymentPeriod.getEmi(), //
-                repaymentPeriod.getDuePrincipal(), //
-                repaymentPeriod.getDueInterest()); //
+                duePrincipal, //
+                dueInterest); //
     }
 
     @Override
@@ -711,6 +717,8 @@ public final class ProgressiveEMICalculator implements EMICalculator {
         addCredit(scheduleModel, targetDate, futureCreditedPrincipals, scheduleModel.zero());
 
         moveOutstandingAmountsFromPeriodsBeforeTransactionDate(scheduleModel.repaymentPeriods(), targetDate);
+
+        collapseIntermediateStubPeriods(scheduleModel);
 
         final ProgressiveLoanInterestScheduleModel temporaryReAgedScheduleModel = generateTemporaryScheduleModel(loanApplicationTerms, mc,
                 reAgePeriodStartDate, reAgePeriodStartDate);
@@ -1074,6 +1082,31 @@ public final class ProgressiveEMICalculator implements EMICalculator {
             rp.setEmi(rp.getTotalPaidAmount());
             rp.moveOutstandingDueToReAging();
         });
+    }
+
+    private void collapseIntermediateStubPeriods(final ProgressiveLoanInterestScheduleModel scheduleModel) {
+        final List<RepaymentPeriod> periods = scheduleModel.repaymentPeriods();
+        if (periods.size() <= 1) {
+            return;
+        }
+        // Only collapse if ALL periods are zero-EMI stubs (no principal due, no interest due, no paid amounts).
+        // This handles the repeated re-aging case where each re-age leaves behind a 1-day stub period,
+        // without affecting legitimate paid installments in multi-disbursement scenarios.
+        final boolean allPeriodsAreStubs = periods.stream()
+                .allMatch(rp -> rp.getEmi().isZero() && rp.getDuePrincipal().isZero() && rp.getDueInterest().isZero());
+        if (!allPeriodsAreStubs) {
+            return;
+        }
+        final RepaymentPeriod firstPeriod = periods.getFirst();
+        final RepaymentPeriod lastPeriod = periods.getLast();
+        final LocalDate lastDueDate = lastPeriod.getDueDate();
+
+        firstPeriod.setDueDate(lastDueDate);
+        firstPeriod.getInterestPeriods().getLast().setDueDate(lastDueDate);
+
+        periods.subList(1, periods.size()).clear();
+
+        calculateRateFactorForRepaymentPeriod(firstPeriod, scheduleModel);
     }
 
     private void calculateLastUnpaidRepaymentPeriodEMI(ProgressiveLoanInterestScheduleModel scheduleModel, LocalDate tillDate) {
@@ -2005,6 +2038,8 @@ public final class ProgressiveEMICalculator implements EMICalculator {
             rp.moveOutstandingDueToReAging();
             rp.setInterestMovedDownward(true);
         });
+
+        collapseIntermediateStubPeriods(interestSchedule);
 
         if (!originalMaturityDate.isBefore(transactionDate)) {
             createRepaymentPeriodForEarlyRepaidAmountsDuringReAgeing(interestSchedule,

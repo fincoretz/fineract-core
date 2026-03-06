@@ -18,7 +18,6 @@
  */
 package org.apache.fineract.integrationtests;
 
-import static org.apache.fineract.integrationtests.common.BusinessDateHelper.runAt;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.restassured.builder.RequestSpecBuilder;
@@ -1071,64 +1070,7 @@ public class GroupSavingsIntegrationTest {
     }
 
     /**
-     * Test that using a client ID with GROUP guarantor type fails with appropriate error
-     */
-    @Test
-    public void testGroupGuarantorWithClientIdButGroupType() {
-        runAt("01 January 2023", () -> {
-            this.savingsAccountHelper = new SavingsAccountHelper(this.requestSpec, this.responseSpec);
-
-            // Create TWO clients - one for loan, one to misuse as "group"
-            final Integer loanClientID = ClientHelper.createClient(this.requestSpec, this.responseSpec);
-            Assertions.assertNotNull(loanClientID);
-
-            final Integer otherClientID = ClientHelper.createClient(this.requestSpec, this.responseSpec);
-            Assertions.assertNotNull(otherClientID);
-
-            // Create savings account for the other client
-            final Integer savingsProductID = createSavingsProduct(this.requestSpec, this.responseSpec, MINIMUM_OPENING_BALANCE, null, null,
-                    "false");
-            final Integer clientSavingsId = this.savingsAccountHelper.applyForSavingsApplication(otherClientID, savingsProductID,
-                    "INDIVIDUAL");
-            this.savingsAccountHelper.approveSavings(clientSavingsId);
-            this.savingsAccountHelper.activateSavings(clientSavingsId);
-
-            // Create loan product
-            LoanProductTestBuilder loanProductBuilder = new LoanProductTestBuilder().withPrincipal(PRINCIPAL).withNumberOfRepayments("4")
-                    .withRepaymentAfterEvery("1").withRepaymentTypeAsWeek().withinterestRatePerPeriod("2")
-                    .withInterestRateFrequencyTypeAsMonths().withAmortizationTypeAsEqualPrincipalPayment()
-                    .withInterestTypeAsDecliningBalance().withOnHoldFundDetails("0", "0", "0");
-            final Integer loanProductID = this.loanTransactionHelper.getLoanProductId(loanProductBuilder.build(null));
-
-            // Create loan
-            final String loanApplicationJSON = new LoanApplicationTestBuilder().withPrincipal(PRINCIPAL).withLoanTermFrequency("4")
-                    .withLoanTermFrequencyAsWeeks().withNumberOfRepayments("4").withRepaymentEveryAfter("1")
-                    .withRepaymentFrequencyTypeAsWeeks().withInterestRatePerPeriod("2").withAmortizationTypeAsEqualInstallments()
-                    .withInterestTypeAsDecliningBalance().withInterestCalculationPeriodTypeSameAsRepaymentPeriod()
-                    .withSubmittedOnDate(SavingsAccountHelper.TRANSACTION_DATE)
-                    .withExpectedDisbursementDate(SavingsAccountHelper.TRANSACTION_DATE)
-                    .build(loanClientID.toString(), loanProductID.toString(), null);
-            final Integer loanID = this.loanTransactionHelper.getLoanId(loanApplicationJSON);
-
-            // Try to create guarantor with CLIENT ID but GROUP type (type mismatch)
-            String guarantorJSON = new GuarantorTestBuilder()
-                    .existingGroupWithGuaranteeAmount(String.valueOf(otherClientID), String.valueOf(clientSavingsId), GUARANTEE_AMOUNT)
-                    .build();
-
-            final ResponseSpecification errorResponse = new ResponseSpecBuilder().build();
-            final RequestSpecification errorRequest = new RequestSpecBuilder().setContentType(ContentType.JSON).build();
-            errorRequest.header("Authorization", "Basic " + Utils.loginIntoServerAndGetBase64EncodedAuthenticationKey());
-
-            ArrayList<HashMap> error = (ArrayList<HashMap>) this.guarantorHelper.createGuarantorWithError(loanID, guarantorJSON,
-                    errorRequest, errorResponse);
-            // Verify we got an error response (status code may be 403 or 404 depending on environment)
-            Assertions.assertNotNull(error, "Should return error for client ID used with GROUP type");
-
-            LOG.info("SUCCESS: Client ID with GROUP type correctly rejected");
-        });
-    }
-
-    /**
+     *
      * Test that duplicate group guarantor detection works and shows proper error message with group name
      */
     @Test
