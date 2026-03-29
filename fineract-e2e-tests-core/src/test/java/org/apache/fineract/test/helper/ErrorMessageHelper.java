@@ -1044,4 +1044,28 @@ public final class ErrorMessageHelper {
     public static String workingCapitalLoanProductIdentifiedDoesNotExistFailure(String identifierId) {
         return String.format("Working Capital Loan Product with identifier %s does not exist", identifierId);
     }
+
+    public static String workingCapitalDelinquencyBucketCreateDuplicateNameFailure(Long identifierId) {
+        return String.format("Data integrity issue with resource: %d", identifierId);
+    }
+
+    public static String workingCapitalDelinquencyBucketNotFoundFailure(Long id) {
+        return String.format("Delinquency bucket with id `%d` is not found.", id);
+    }
+
+    public static String workingCapitalDelinquencyBucketDoesntExistFailure(Long id) {
+        return String.format("Delinquency bucket with id `%d` does not exist.", id);
+    }
+
+    public static String disburseNotApprovedFailure(String status) {
+        return String.format("Disbursement is not allowed from current status %s", status);
+    }
+
+    public static String disburseDateFailure(String errorMessageDescription) {
+        return String.format("Failed data validation due to: %s", errorMessageDescription);
+    }
+
+    public static String undoDisbursalDisallowedFailure(String status) {
+        return String.format("Transition LOAN_DISBURSAL_UNDO is not allowed from status %s", status);
+    }
 }

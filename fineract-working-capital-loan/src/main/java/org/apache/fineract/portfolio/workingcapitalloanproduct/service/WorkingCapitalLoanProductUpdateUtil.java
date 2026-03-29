@@ -27,9 +27,10 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
+import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanPeriodFrequencyType;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.WorkingCapitalLoanProductConstants;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAmortizationType;
-import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanPeriodFrequencyType;
+import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanDelinquencyStartType;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanProduct;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanProductConfigurableAttributes;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanProductMinMaxConstraints;
@@ -85,13 +86,6 @@ public class WorkingCapitalLoanProductUpdateUtil {
             changes.put(WorkingCapitalLoanProductConstants.amortizationTypeParamName, newValue);
             relatedDetail.setAmortizationType(WorkingCapitalAmortizationType.fromString(newValue));
         }
-        if (command.isChangeInBigDecimalParameterNamed(WorkingCapitalLoanProductConstants.flatPercentageAmountParamName,
-                relatedDetail.getFlatPercentageAmount())) {
-            final BigDecimal newValue = command
-                    .bigDecimalValueOfParameterNamed(WorkingCapitalLoanProductConstants.flatPercentageAmountParamName);
-            changes.put(WorkingCapitalLoanProductConstants.flatPercentageAmountParamName, newValue);
-            relatedDetail.setFlatPercentageAmount(newValue);
-        }
         if (command.isChangeInIntegerParameterNamed(WorkingCapitalLoanProductConstants.npvDayCountParamName,
                 relatedDetail.getNpvDayCount())) {
             final Integer newValue = command.integerValueOfParameterNamed(WorkingCapitalLoanProductConstants.npvDayCountParamName);
@@ -127,6 +121,21 @@ public class WorkingCapitalLoanProductUpdateUtil {
             final BigDecimal newValue = command.bigDecimalValueOfParameterNamed(WorkingCapitalLoanProductConstants.discountParamName);
             changes.put(WorkingCapitalLoanProductConstants.discountParamName, newValue);
             relatedDetail.setDiscount(newValue);
+        }
+        if (command.isChangeInIntegerParameterNamed(WorkingCapitalLoanProductConstants.delinquencyGraceDaysParamName,
+                relatedDetail.getDelinquencyGraceDays())) {
+            final Integer newValue = command.integerValueOfParameterNamed(WorkingCapitalLoanProductConstants.delinquencyGraceDaysParamName);
+            changes.put(WorkingCapitalLoanProductConstants.delinquencyGraceDaysParamName, newValue);
+            relatedDetail.setDelinquencyGraceDays(newValue);
+        }
+        final String currentDelinquencyStartType = (relatedDetail.getDelinquencyStartType() != null)
+                ? relatedDetail.getDelinquencyStartType().name()
+                : null;
+        if (command.isChangeInStringParameterNamed(WorkingCapitalLoanProductConstants.delinquencyStartTypeParamName,
+                currentDelinquencyStartType)) {
+            final String newValue = command.stringValueOfParameterNamed(WorkingCapitalLoanProductConstants.delinquencyStartTypeParamName);
+            changes.put(WorkingCapitalLoanProductConstants.delinquencyStartTypeParamName, newValue);
+            relatedDetail.setDelinquencyStartType(WorkingCapitalLoanDelinquencyStartType.fromString(newValue));
         }
         return changes;
     }
@@ -176,8 +185,6 @@ public class WorkingCapitalLoanProductUpdateUtil {
             final JsonObject allowOverrides = command.parsedJson().getAsJsonObject()
                     .getAsJsonObject(WorkingCapitalLoanProductConstants.allowAttributeOverridesParamName);
             if (allowOverrides != null && !allowOverrides.isJsonNull()) {
-                updateBooleanField(allowOverrides, WorkingCapitalLoanProductConstants.flatPercentageAmountOverridableParamName,
-                        config::setFlatPercentageAmount, config::getFlatPercentageAmount, changes);
                 updateBooleanField(allowOverrides, WorkingCapitalLoanProductConstants.delinquencyBucketClassificationOverridableParamName,
                         config::setDelinquencyBucketClassification, config::getDelinquencyBucketClassification, changes);
                 updateBooleanField(allowOverrides, WorkingCapitalLoanProductConstants.discountDefaultOverridableParamName,

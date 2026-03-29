@@ -60,7 +60,6 @@ public class WorkingCapitalLoanProductData implements Serializable {
 
     // Settings details
     private StringEnumOptionData amortizationType;
-    private BigDecimal flatPercentageAmount;
     private DelinquencyBucketData delinquencyBucket;
     private Integer npvDayCount;
     private List<WorkingCapitalPaymentAllocationData> paymentAllocation;
@@ -75,6 +74,8 @@ public class WorkingCapitalLoanProductData implements Serializable {
     private BigDecimal discount;
     private Integer repaymentEvery;
     private StringEnumOptionData repaymentFrequencyType;
+    private Integer delinquencyGraceDays;
+    private StringEnumOptionData delinquencyStartType;
 
     // Configurable attributes (allowAttributeOverrides)
     private WorkingCapitalLoanProductConfigurableAttributesData allowAttributeOverrides;
@@ -85,6 +86,7 @@ public class WorkingCapitalLoanProductData implements Serializable {
     private List<StringEnumOptionData> amortizationTypeOptions;
     private List<StringEnumOptionData> periodFrequencyTypeOptions;
     private List<StringEnumOptionData> advancedPaymentAllocationTypes;
+    private List<StringEnumOptionData> delinquencyStartTypeOptions;
     private List<EnumOptionData> advancedPaymentAllocationTransactionTypes;
     private Collection<DelinquencyBucketData> delinquencyBucketOptions;
 
@@ -96,6 +98,7 @@ public class WorkingCapitalLoanProductData implements Serializable {
         setAdvancedPaymentAllocationTransactionTypes(productTemplate.getAdvancedPaymentAllocationTransactionTypes());
         setAdvancedPaymentAllocationTypes(productTemplate.getAdvancedPaymentAllocationTypes());
         setDelinquencyBucketOptions(productTemplate.getDelinquencyBucketOptions());
+        setDelinquencyStartTypeOptions(productTemplate.getDelinquencyStartTypeOptions());
         return this;
     }
 }

@@ -42,6 +42,7 @@ import org.apache.fineract.client.models.PutWorkingCapitalLoanProductsProductIdR
 import org.apache.fineract.client.models.StringEnumOptionData;
 import org.apache.fineract.integrationtests.common.workingcapitalloanproduct.WorkingCapitalLoanProductHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloanproduct.WorkingCapitalLoanProductTestBuilder;
+import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanDelinquencyStartType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -288,7 +289,6 @@ public class WorkingCapitalLoanProductCRUDTest {
                 .withExternalId(externalId) //
                 .withFundId(fundId) //
                 .withAmortizationType("EIR") //
-                .withFlatPercentageAmount(BigDecimal.valueOf(5.0)) //
                 .withDelinquencyBucketId(delinquencyBucketId) //
                 .withNpvDayCount(365) //
                 .withPaymentAllocationTypes(paymentAllocationTypes) //
@@ -302,6 +302,8 @@ public class WorkingCapitalLoanProductCRUDTest {
                 .withRepaymentEvery(60) //
                 .withRepaymentFrequencyType("DAYS") //
                 .withAllowAttributeOverrides(allowAttributeOverrides) //
+                .withDelinquencyGraceDays(0) //
+                .withDelinquencyStartType(WorkingCapitalLoanDelinquencyStartType.DISBURSEMENT.getCode()) //
                 .build();
 
         // When
@@ -315,6 +317,7 @@ public class WorkingCapitalLoanProductCRUDTest {
         assertNotNull(retrieved.getName());
         assertTrue(retrieved.getName().startsWith("Full wcl Product"));
         assertEquals(externalId, retrieved.getExternalId());
+        assertEquals(0, retrieved.getDelinquencyGraceDays());
         wclProductHelper.deleteWorkingCapitalLoanProductById(productId);
     }
 
@@ -344,7 +347,6 @@ public class WorkingCapitalLoanProductCRUDTest {
 
         // All configurable attributes
         final HashMap<String, Boolean> allowAttributeOverrides = new HashMap<>();
-        allowAttributeOverrides.put("flatPercentageAmount", true);
         allowAttributeOverrides.put("delinquencyBucketClassification", false);
         allowAttributeOverrides.put("discountDefault", true);
         allowAttributeOverrides.put("periodPaymentFrequency", false);
@@ -362,11 +364,12 @@ public class WorkingCapitalLoanProductCRUDTest {
                 .withDecimalPlace(2) //
                 .withCurrencyInMultiplesOf(1) //
                 // Settings category
-                .withAmortizationType("FLAT") //
-                .withFlatPercentageAmount(BigDecimal.valueOf(5.5)) //
+                .withAmortizationType("EIR") //
                 .withDelinquencyBucketId(delinquencyBucketId) //
                 .withNpvDayCount(365) //
                 .withPaymentAllocationTypes(paymentAllocationTypes) //
+                .withDelinquencyGraceDays(1) //
+                .withDelinquencyStartType(WorkingCapitalLoanDelinquencyStartType.DISBURSEMENT.getCode()) //
                 // Term category
                 .withPrincipalAmountMin(BigDecimal.valueOf(1000)) //
                 .withPrincipalAmountDefault(BigDecimal.valueOf(5000)) //
@@ -429,11 +432,10 @@ public class WorkingCapitalLoanProductCRUDTest {
 
         // Verify Settings category
         assertNotNull(retrieved.getAmortizationType());
-        assertEquals("FLAT", retrieved.getAmortizationType().getCode());
-        if (retrieved.getFlatPercentageAmount() != null) {
-            assertEquals(0, BigDecimal.valueOf(5.5).compareTo(retrieved.getFlatPercentageAmount()));
-        }
+        assertEquals("EIR", retrieved.getAmortizationType().getCode());
         assertEquals(365, retrieved.getNpvDayCount());
+        assertEquals(1, retrieved.getDelinquencyGraceDays());
+        assertEquals("DISBURSEMENT", retrieved.getDelinquencyStartType().getCode());
 
         // Verify Payment Allocation (if present)
         if (retrieved.getPaymentAllocation() != null && !retrieved.getPaymentAllocation().isEmpty()) {
@@ -473,8 +475,6 @@ public class WorkingCapitalLoanProductCRUDTest {
 
         // Verify Configurable Attributes (allowAttributeOverrides)
         if (retrieved.getAllowAttributeOverrides() != null) {
-            // Configurable attributes
-            assertEquals(Boolean.TRUE, retrieved.getAllowAttributeOverrides().getFlatPercentageAmount());
             assertEquals(Boolean.FALSE, retrieved.getAllowAttributeOverrides().getDelinquencyBucketClassification());
             assertEquals(Boolean.TRUE, retrieved.getAllowAttributeOverrides().getDiscountDefault());
             assertEquals(Boolean.FALSE, retrieved.getAllowAttributeOverrides().getPeriodPaymentFrequency());

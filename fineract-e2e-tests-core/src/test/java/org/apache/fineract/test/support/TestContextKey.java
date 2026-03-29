@@ -29,6 +29,7 @@ public abstract class TestContextKey {
     public static final String LOAN_CREATE_RESPONSE = "loanCreateResponse";
     public static final String LOAN_CREATE_SECOND_LOAN_RESPONSE = "loanCreateSecondLoanResponse";
     public static final String LOAN_MODIFY_RESPONSE = "loanModifyResponse";
+    public static final String LOAN_DELETE_RESPONSE = "loanDeleteResponse";
     public static final String ADD_DUE_DATE_CHARGE_RESPONSE = "addDueDateChargeResponse";
     public static final String ADD_INSTALLMENT_FEE_CHARGE_RESPONSE = "addInstallmentFeeChargeResponse";
     public static final String ADD_PROCESSING_FEE_RESPONSE = "addProcessingFeeResponse";
@@ -324,4 +325,15 @@ public abstract class TestContextKey {
     public static final String WORKING_CAPITAL_LOAN_PRODUCT_CREATE_RESPONSE = "workingCapitalLoanProductCreateResponse";
     public static final String WORKING_CAPITAL_LOAN_PRODUCT_UPDATE_REQUEST = "workingCapitalLoanProductUpdateRequest";
     public static final String WORKING_CAPITAL_LOAN_PRODUCT_UPDATE_RESPONSE = "workingCapitalLoanProductUpdateResponse";
+    public static final String WORKING_CAPITAL_LOAN_PRODUCT_TEMPLATE_RESPONSE = "workingCapitalLoanProductTemplateResponse";
+    public static final String WORKING_CAPITAL_LOAN_PRODUCT_FOR_LOAN_TEST = "workingCapitalLoanProductForLoanTest";
+    public static final String DELINQUENCY_BUCKET_ID = "delinquencyBucketId";
+    public static final String DELINQUENCY_BUCKET_CREATE_REQUEST = "delinquencyBucketCreateRequest";
+    public static final String DELINQUENCY_BUCKET_UPDATE_REQUEST = "delinquencyBucketUpdateRequest";
+
+    public static final String DELINQUENCY_BUCKET_ID_FOR_UPDATE = "delinquencyBucketIdForUpdate";
+    public static final String DELINQUENCY_BUCKET_CREATE_REQUEST_FOR_UPDATE = "delinquencyBucketCreateRequestForUpdate";
+    public static final String DELINQUENCY_BUCKET_CREATE_RESPONSE_FOR_UPDATE_DUPLICATE = "delinquencyBucketUpdateRequestForUpdateDuplicate";
+
+    public static final String WC_LOAN_ACTION_TEMPLATE_RESPONSE = "wcLoanActionTemplateResponse";
 }

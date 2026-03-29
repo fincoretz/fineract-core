@@ -55,7 +55,7 @@ public class GlobalConfigurationHelper {
 
     public GlobalConfigurationPropertyData getGlobalConfigurationById(final Long configId) {
         log.info("------------------------ RETRIEVING GLOBAL CONFIGURATION BY ID -------------------------");
-        return Calls.ok(FineractClientHelper.getFineractClient().globalConfigurations.retrieveOne3(configId));
+        return Calls.ok(FineractClientHelper.getFineractClient().globalConfigurations.retrieveOneGlobalConfiguration(configId));
     }
 
     // TODO: This is quite a bad pattern and adds a lot of time to individual test
@@ -600,6 +600,12 @@ public class GlobalConfigurationHelper {
                 "ACTIVE,TRANSFER_IN_PROGRESS,TRANSFER_ON_HOLD,OVERPAID,CLOSED_OBLIGATIONS_MET");
         defaults.add(allowedLoanStatusesForDelayedSettlementExternalAssetTransfer);
 
+        HashMap<String, Object> maxLoginRetryAttempts = new HashMap<>();
+        maxLoginRetryAttempts.put("name", GlobalConfigurationConstants.MAX_LOGIN_RETRY_ATTEMPTS);
+        maxLoginRetryAttempts.put("value", 5L);
+        maxLoginRetryAttempts.put("enabled", false);
+        maxLoginRetryAttempts.put("trapDoor", false);
+        defaults.add(maxLoginRetryAttempts);
         HashMap<String, Object> enableOriginatorCreationDuringLoanApplication = new HashMap<>();
         enableOriginatorCreationDuringLoanApplication.put("name",
                 GlobalConfigurationConstants.ENABLE_ORIGINATOR_CREATION_DURING_LOAN_APPLICATION);
@@ -632,7 +638,7 @@ public class GlobalConfigurationHelper {
 
     public void updateGlobalConfigurationInternal(final String configName, final Long value) {
         log.info("---------------------------UPDATE VALUE FOR GLOBAL CONFIG (internal) ---------------------------------------");
-        Calls.ok(FineractClientHelper.getFineractClient().legacy.updateGlobalConfiguration(configName, value));
+        Calls.ok(FineractClientHelper.getFineractClient().legacy.updateInternalGlobalConfiguration(configName, value));
     }
 
     public void manageConfigurations(final String configurationName, final boolean enabled) {

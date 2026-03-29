@@ -30,8 +30,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.client.feign.ObjectMapperFactory;
 import org.apache.fineract.client.models.PostWorkingCapitalLoanProductsRequest;
 import org.apache.fineract.client.models.PutWorkingCapitalLoanProductsProductIdRequest;
+import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanPeriodFrequencyType;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAmortizationType;
-import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanPeriodFrequencyType;
 
 @Slf4j
 public class WorkingCapitalLoanProductTestBuilder {
@@ -58,7 +58,6 @@ public class WorkingCapitalLoanProductTestBuilder {
     private Integer decimalPlace = DEFAULT_DECIMAL_PLACE;
     private Integer currencyInMultiplesOf = DEFAULT_CURRENCY_IN_MULTIPLES_OF;
     private String amortizationType = DEFAULT_AMORTIZATION;
-    private BigDecimal flatPercentageAmount;
     private Long delinquencyBucketId;
     private Integer npvDayCount = DEFAULT_NPV_DAY_COUNT;
     private BigDecimal principalAmountMin;
@@ -72,6 +71,8 @@ public class WorkingCapitalLoanProductTestBuilder {
     private String repaymentFrequencyType = DEFAULT_PERIOD_PAYMENT_FREQUENCY_TYPE;
     private List<String> paymentAllocationTypes = DEFAULT_PAYMENT_ALLOCATION_TYPES;
     private Map<String, Boolean> allowAttributeOverrides;
+    private Integer delinquencyGraceDays;
+    private String delinquencyStartType;
 
     public WorkingCapitalLoanProductTestBuilder withName(final String name) {
         this.name = name;
@@ -115,11 +116,6 @@ public class WorkingCapitalLoanProductTestBuilder {
 
     public WorkingCapitalLoanProductTestBuilder withAmortizationType(final String amortizationType) {
         this.amortizationType = amortizationType;
-        return this;
-    }
-
-    public WorkingCapitalLoanProductTestBuilder withFlatPercentageAmount(final BigDecimal flatPercentageAmount) {
-        this.flatPercentageAmount = flatPercentageAmount;
         return this;
     }
 
@@ -188,6 +184,16 @@ public class WorkingCapitalLoanProductTestBuilder {
         return this;
     }
 
+    public WorkingCapitalLoanProductTestBuilder withDelinquencyGraceDays(final Integer delinquencyGraceDays) {
+        this.delinquencyGraceDays = delinquencyGraceDays;
+        return this;
+    }
+
+    public WorkingCapitalLoanProductTestBuilder withDelinquencyStartType(final String delinquencyStartType) {
+        this.delinquencyStartType = delinquencyStartType;
+        return this;
+    }
+
     public PostWorkingCapitalLoanProductsRequest build() {
         final PostWorkingCapitalLoanProductsRequest request = new PostWorkingCapitalLoanProductsRequest();
         populateCommonFields(request);
@@ -216,7 +222,6 @@ public class WorkingCapitalLoanProductTestBuilder {
         if (this.amortizationType != null) {
             request.setAmortizationType(PostWorkingCapitalLoanProductsRequest.AmortizationTypeEnum.valueOf(this.amortizationType));
         }
-        request.setFlatPercentageAmount(this.flatPercentageAmount);
         request.setDelinquencyBucketId(this.delinquencyBucketId);
         request.setNpvDayCount(this.npvDayCount);
         request.setMinPrincipal(this.principalAmountMin);
@@ -231,6 +236,8 @@ public class WorkingCapitalLoanProductTestBuilder {
             request.setRepaymentFrequencyType(
                     PostWorkingCapitalLoanProductsRequest.RepaymentFrequencyTypeEnum.valueOf(this.repaymentFrequencyType));
         }
+        request.setDelinquencyGraceDays(this.delinquencyGraceDays);
+        request.setDelinquencyStartType(this.delinquencyStartType);
         request.setLocale("en_US");
         request.setDateFormat("yyyy-MM-dd");
     }
@@ -246,7 +253,6 @@ public class WorkingCapitalLoanProductTestBuilder {
         if (this.amortizationType != null) {
             request.setAmortizationType(PutWorkingCapitalLoanProductsProductIdRequest.AmortizationTypeEnum.valueOf(this.amortizationType));
         }
-        request.setFlatPercentageAmount(this.flatPercentageAmount);
         request.setDelinquencyBucketId(this.delinquencyBucketId);
         request.setNpvDayCount(this.npvDayCount);
         request.setMinPrincipal(this.principalAmountMin);
@@ -261,6 +267,8 @@ public class WorkingCapitalLoanProductTestBuilder {
             request.setRepaymentFrequencyType(
                     PutWorkingCapitalLoanProductsProductIdRequest.RepaymentFrequencyTypeEnum.valueOf(this.repaymentFrequencyType));
         }
+        request.setDelinquencyGraceDays(this.delinquencyGraceDays);
+        request.setDelinquencyStartType(this.delinquencyStartType);
         request.setLocale("en_US");
         request.setDateFormat("yyyy-MM-dd");
     }

@@ -37,15 +37,18 @@ import org.apache.fineract.portfolio.delinquency.exception.DelinquencyBucketNotF
 import org.apache.fineract.portfolio.fund.domain.Fund;
 import org.apache.fineract.portfolio.fund.domain.FundRepository;
 import org.apache.fineract.portfolio.fund.exception.FundNotFoundException;
+import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanPeriodFrequencyType;
+import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanRepository;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.WorkingCapitalLoanProductConstants;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAdvancedPaymentAllocationsJsonParser;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAmortizationType;
-import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanPeriodFrequencyType;
+import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanDelinquencyStartType;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanProduct;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanProductConfigurableAttributes;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanProductMinMaxConstraints;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanProductPaymentAllocationRule;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanProductRelatedDetail;
+import org.apache.fineract.portfolio.workingcapitalloanproduct.exception.WorkingCapitalLoanProductCannotBeDeletedException;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.exception.WorkingCapitalLoanProductDuplicateExternalIdException;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.exception.WorkingCapitalLoanProductDuplicateNameException;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.exception.WorkingCapitalLoanProductDuplicateShortNameException;
@@ -62,6 +65,7 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
 
     private final WorkingCapitalLoanProductDataValidator validator;
     private final WorkingCapitalLoanProductRepository repository;
+    private final WorkingCapitalLoanRepository workingCapitalLoanRepository;
     private final WorkingCapitalLoanProductPaymentAllocationRuleRepository paymentAllocationRuleRepository;
     private final WorkingCapitalLoanProductUpdateUtil updateUtil;
     private final FundRepository fundRepository;
@@ -89,6 +93,7 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //
                 .withEntityId(product.getId()) //
+                .withEntityExternalId(product.getExternalId()) //
                 .build();
     }
 
@@ -135,6 +140,7 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //
                 .withEntityId(productId) //
+                .withEntityExternalId(product.getExternalId()) //
                 .with(changes) //
                 .build();
     }
@@ -145,15 +151,15 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
         final WorkingCapitalLoanProduct product = this.repository.findById(productId)
                 .orElseThrow(() -> new WorkingCapitalLoanProductNotFoundException(productId));
 
-        // TODO: Check if product is used in any loans (when Working Capital Loan entity is created)
-        // if (isProductInUse(productId)) {
-        // throw new WorkingCapitalLoanProductCannotBeDeletedException(productId);
-        // }
+        if (this.workingCapitalLoanRepository.existsByLoanProduct_Id(productId)) {
+            throw new WorkingCapitalLoanProductCannotBeDeletedException(productId);
+        }
 
         this.repository.delete(product);
 
         return new CommandProcessingResultBuilder() //
                 .withEntityId(productId) //
+                .withEntityExternalId(product.getExternalId()) //
                 .build();
     }
 
@@ -289,9 +295,6 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
         final String amortizationTypeValue = command
                 .stringValueOfParameterNamed(WorkingCapitalLoanProductConstants.amortizationTypeParamName);
         final WorkingCapitalAmortizationType amortizationType = WorkingCapitalAmortizationType.fromString(amortizationTypeValue);
-        final BigDecimal flatPercentageAmount = command.parameterExists(WorkingCapitalLoanProductConstants.flatPercentageAmountParamName)
-                ? command.bigDecimalValueOfParameterNamed(WorkingCapitalLoanProductConstants.flatPercentageAmountParamName)
-                : null;
         final Integer npvDayCount = command.integerValueOfParameterNamed(WorkingCapitalLoanProductConstants.npvDayCountParamName);
         final BigDecimal principal = command.bigDecimalValueOfParameterNamed(WorkingCapitalLoanProductConstants.principalParamName);
         final BigDecimal periodPaymentRate = command
@@ -304,8 +307,15 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
         final BigDecimal discount = command.parameterExists(WorkingCapitalLoanProductConstants.discountParamName)
                 ? command.bigDecimalValueOfParameterNamed(WorkingCapitalLoanProductConstants.discountParamName)
                 : null;
+        final Integer delinquencyGraceDays = command
+                .integerValueOfParameterNamed(WorkingCapitalLoanProductConstants.delinquencyGraceDaysParamName);
+        final String delinquencyStartTypeValue = command
+                .stringValueOfParameterNamed(WorkingCapitalLoanProductConstants.delinquencyStartTypeParamName);
+        final WorkingCapitalLoanDelinquencyStartType delinquencyStartType = WorkingCapitalLoanDelinquencyStartType
+                .fromString(delinquencyStartTypeValue);
         final WorkingCapitalLoanProductRelatedDetail relatedDetail = new WorkingCapitalLoanProductRelatedDetail(amortizationType,
-                flatPercentageAmount, npvDayCount, principal, periodPaymentRate, repaymentEvery, repaymentFrequencyType, discount);
+                npvDayCount, principal, periodPaymentRate, repaymentEvery, repaymentFrequencyType, discount, delinquencyGraceDays,
+                delinquencyStartType);
 
         // Min/max constraints
         final BigDecimal minPrincipal = command.parameterExists(WorkingCapitalLoanProductConstants.minPrincipalParamName)
@@ -331,7 +341,6 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
     }
 
     private WorkingCapitalLoanProductConfigurableAttributes createConfigurableAttributesFromCommand(final JsonCommand command) {
-        Boolean flatPercentageAmount = null;
         Boolean delinquencyBucketClassification = null;
         Boolean discountDefault = null;
         Boolean periodPaymentFrequency = null;
@@ -341,11 +350,6 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
             final JsonObject allowOverrides = command.parsedJson().getAsJsonObject()
                     .getAsJsonObject(WorkingCapitalLoanProductConstants.allowAttributeOverridesParamName);
             if (allowOverrides != null && !allowOverrides.isJsonNull()) {
-                if (allowOverrides.has(WorkingCapitalLoanProductConstants.flatPercentageAmountOverridableParamName)
-                        && !allowOverrides.get(WorkingCapitalLoanProductConstants.flatPercentageAmountOverridableParamName).isJsonNull()) {
-                    flatPercentageAmount = allowOverrides.get(WorkingCapitalLoanProductConstants.flatPercentageAmountOverridableParamName)
-                            .getAsBoolean();
-                }
                 if (allowOverrides.has(WorkingCapitalLoanProductConstants.delinquencyBucketClassificationOverridableParamName)
                         && !allowOverrides.get(WorkingCapitalLoanProductConstants.delinquencyBucketClassificationOverridableParamName)
                                 .isJsonNull()) {
@@ -371,7 +375,6 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
         }
 
         final WorkingCapitalLoanProductConfigurableAttributes configurableAttributes = new WorkingCapitalLoanProductConfigurableAttributes();
-        configurableAttributes.setFlatPercentageAmount(flatPercentageAmount);
         configurableAttributes.setDelinquencyBucketClassification(delinquencyBucketClassification);
         configurableAttributes.setDiscountDefault(discountDefault);
         configurableAttributes.setPeriodPaymentFrequency(periodPaymentFrequency);

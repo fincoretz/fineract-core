@@ -389,6 +389,14 @@ public class LoanStepDef extends AbstractStepDef {
                 transactionAmount, transferExternalOwnerId);
     }
 
+    @When("Customer makes {string} transaction with {string} payment type on {string} with {double} EUR transaction amount and system-generated Idempotency key and check previous external owner")
+    public void createTransactionWithAutoIdempotencyKeyWithPreviousExternalOwner(String transactionTypeInput, String transactionPaymentType,
+            String transactionDate, double transactionAmount) throws IOException {
+        String previousOwnerId = testContext().get(TestContextKey.ASSET_EXTERNALIZATION_PREVIOUS_OWNER_EXTERNAL_ID);
+        createTransactionWithAutoIdempotencyKeyAndWithExternalOwner(transactionTypeInput, transactionPaymentType, transactionDate,
+                transactionAmount, previousOwnerId);
+    }
+
     @When("Customer makes {string} transaction with {string} payment type on {string} with {double} EUR transaction amount and system-generated Idempotency key and interestRefundCalculation {booleanValue}")
     public void createTransactionWithAutoIdempotencyKeyAndWithInterestRefundCalculationFlagProvided(final String transactionTypeInput,
             final String transactionPaymentType, final String transactionDate, final double transactionAmount,
@@ -3278,7 +3286,7 @@ public class LoanStepDef extends AbstractStepDef {
         PostLoansResponse loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         Long loanId = loanCreateResponse.getLoanId();
         String loanExternalId = loanCreateResponse.getResourceExternalId();
-        DeleteLoansLoanIdResponse deleteLoanResponse = ok(() -> fineractClient.loans().deleteLoanApplication1(loanExternalId));
+        DeleteLoansLoanIdResponse deleteLoanResponse = ok(() -> fineractClient.loans().deleteLoanApplicationByExternalId(loanExternalId));
         assertThat(deleteLoanResponse.getLoanId()).isEqualTo(loanId);
         assertThat(deleteLoanResponse.getResourceExternalId()).isEqualTo(loanExternalId);
     }
@@ -3287,7 +3295,8 @@ public class LoanStepDef extends AbstractStepDef {
     public void failedDeleteLoanWithExternalId() {
         PostLoansResponse loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         String loanExternalId = loanCreateResponse.getResourceExternalId();
-        CallFailedRuntimeException exception = fail(() -> fineractClient.loans().deleteLoanApplication1(loanExternalId.substring(5)));
+        CallFailedRuntimeException exception = fail(
+                () -> fineractClient.loans().deleteLoanApplicationByExternalId(loanExternalId.substring(5)));
         assertThat(exception.getStatus()).as(ErrorMessageHelper.dateFailureErrorCodeMsg()).isEqualTo(404);
     }
 
@@ -3519,7 +3528,7 @@ public class LoanStepDef extends AbstractStepDef {
     @Then("Loan Product Charge-Off reasons options from loan product template have {int} options, with the following data:")
     public void loanProductTemplateChargeOffReasonOptionsCheck(final int linesExpected, final DataTable table) {
         final GetLoanProductsTemplateResponse loanProductDetails = ok(
-                () -> fineractClient.loanProducts().retrieveTemplate11(Map.of("staffInSelectedOfficeOnly", "false")));
+                () -> fineractClient.loanProducts().retrieveTemplateLoanProduct(Map.of("staffInSelectedOfficeOnly", "false")));
         assertNotNull(loanProductDetails);
         final List<GetLoanProductsChargeOffReasonOptions> chargeOffReasonOptions = loanProductDetails.getChargeOffReasonOptions();
         assertNotNull(chargeOffReasonOptions);
@@ -5627,7 +5636,8 @@ public class LoanStepDef extends AbstractStepDef {
         final PutLoansAvailableDisbursementAmountRequest modifyLoanAvailableDisbursementAmountRequest = new PutLoansAvailableDisbursementAmountRequest()
                 .locale(LOCALE_EN).amount(new BigDecimal(amount));
 
-        ok(() -> fineractClient.loans().modifyLoanAvailableDisbursementAmount1(externalId, modifyLoanAvailableDisbursementAmountRequest));
+        ok(() -> fineractClient.loans().modifyLoanAvailableDisbursementAmountByExternalId(externalId,
+                modifyLoanAvailableDisbursementAmountRequest));
     }
 
     @Then("Update loan available disbursement amount is forbidden with amount {string} due to exceed applied amount")
@@ -5637,8 +5647,8 @@ public class LoanStepDef extends AbstractStepDef {
         final PutLoansAvailableDisbursementAmountRequest modifyLoanAvailableDisbursementAmountRequest = new PutLoansAvailableDisbursementAmountRequest()
                 .locale(LOCALE_EN).amount(new BigDecimal(amount));
 
-        final CallFailedRuntimeException exception = fail(() -> fineractClient.loans().modifyLoanAvailableDisbursementAmount1(externalId,
-                modifyLoanAvailableDisbursementAmountRequest));
+        final CallFailedRuntimeException exception = fail(() -> fineractClient.loans()
+                .modifyLoanAvailableDisbursementAmountByExternalId(externalId, modifyLoanAvailableDisbursementAmountRequest));
 
         assertThat(exception.getStatus()).isEqualTo(403);
         // API returns generic validation error - ideally should contain specific message about exceeding amount
@@ -5807,7 +5817,7 @@ public class LoanStepDef extends AbstractStepDef {
 
     private Long getClassificationCodeValueId(String codeName, String codeValueName) {
         // Check if code value already exists
-        List<GetCodeValuesDataResponse> existingCodeValues = fineractClient.codeValues().retrieveAllCodeValues1(codeName);
+        List<GetCodeValuesDataResponse> existingCodeValues = fineractClient.codeValues().retrieveAllCodeValuesByCodeName(codeName);
         // Try to find existing code value with the same name
         for (GetCodeValuesDataResponse codeValue : existingCodeValues) {
             if (codeValueName.equals(codeValue.getName())) {

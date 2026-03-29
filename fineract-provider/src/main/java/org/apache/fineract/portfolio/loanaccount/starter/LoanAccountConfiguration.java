@@ -37,7 +37,7 @@ import org.apache.fineract.organisation.holiday.domain.HolidayRepository;
 import org.apache.fineract.organisation.holiday.domain.HolidayRepositoryWrapper;
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrencyRepositoryWrapper;
 import org.apache.fineract.organisation.staff.domain.StaffRepository;
-import org.apache.fineract.organisation.staff.service.StaffReadPlatformService;
+import org.apache.fineract.organisation.staff.service.StaffReadService;
 import org.apache.fineract.organisation.teller.data.CashierTransactionDataValidator;
 import org.apache.fineract.organisation.workingdays.domain.WorkingDaysRepositoryWrapper;
 import org.apache.fineract.portfolio.account.domain.AccountAssociationsRepository;
@@ -155,6 +155,7 @@ import org.apache.fineract.portfolio.loanaccount.service.LoanReadPlatformService
 import org.apache.fineract.portfolio.loanaccount.service.LoanReadPlatformServiceImpl;
 import org.apache.fineract.portfolio.loanaccount.service.LoanRefundService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanRepaymentScheduleService;
+import org.apache.fineract.portfolio.loanaccount.service.LoanScheduleGeneratorService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanScheduleService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanStatusChangePlatformService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanStatusChangePlatformServiceImpl;
@@ -341,7 +342,7 @@ public class LoanAccountConfiguration {
             GroupReadPlatformService groupReadPlatformService, LoanDropdownReadPlatformService loanDropdownReadPlatformService,
             FundReadPlatformService fundReadPlatformService, ChargeReadPlatformService chargeReadPlatformService,
             CodeValueReadPlatformService codeValueReadPlatformService, CalendarReadPlatformService calendarReadPlatformService,
-            StaffReadPlatformService staffReadPlatformService, PaginationHelper paginationHelper,
+            StaffReadService staffReadPlatformService, PaginationHelper paginationHelper,
             PaymentTypeReadService paymentTypeReadPlatformService, FloatingRatesReadPlatformService floatingRatesReadPlatformService,
             LoanUtilService loanUtilService, ConfigurationDomainService configurationDomainService,
             AccountDetailsReadPlatformService accountDetailsReadPlatformService, ColumnValidator columnValidator,
@@ -505,8 +506,10 @@ public class LoanAccountConfiguration {
     @ConditionalOnMissingBean(LoanChargeService.class)
     public LoanChargeService loanChargeService(final LoanChargeValidator loanChargeValidator,
             final LoanTransactionProcessingService loanTransactionProcessingService,
-            final LoanLifecycleStateMachine loanLifecycleStateMachine, final LoanBalanceService loanBalanceService) {
-        return new LoanChargeService(loanChargeValidator, loanTransactionProcessingService, loanLifecycleStateMachine, loanBalanceService);
+            final LoanLifecycleStateMachine loanLifecycleStateMachine, final LoanBalanceService loanBalanceService,
+            final LoanScheduleGeneratorService loanScheduleGeneratorService) {
+        return new LoanChargeService(loanChargeValidator, loanTransactionProcessingService, loanLifecycleStateMachine, loanBalanceService,
+                loanScheduleGeneratorService);
     }
 
     @Bean

@@ -199,8 +199,12 @@ public class ClientSearchTest extends IntegrationTest {
         clientHelper.createClient(request1);
 
         PostClientsRequest request2 = ClientHelper.defaultClientCreationRequest();
+        String uniqueFirstName = Utils.randomStringGenerator("FN_", 10);
+        String uniqueLastName = Utils.randomStringGenerator("LN_", 10);
+        request2.setFirstname(uniqueFirstName);
+        request2.setLastname(uniqueLastName);
         clientHelper.createClient(request2);
-        String client2DisplayName = "%s %s".formatted(request2.getFirstname(), request2.getLastname());
+        String client2DisplayName = "%s %s".formatted(uniqueFirstName, uniqueLastName);
 
         PostClientsRequest request3 = ClientHelper.defaultClientCreationRequest();
         clientHelper.createClient(request3);
@@ -323,10 +327,10 @@ public class ClientSearchTest extends IntegrationTest {
         secondEntityClientRequest.setLegalFormId(2L);
         PostClientsResponse secondEntityClientResponse = clientHelper.createClient(secondEntityClientRequest);
         // when
-        GetClientsResponse individualClients = ok(fineractClient().clients.retrieveAll21(newOffice.getOfficeId(), null, null, null, null,
-                null, null, null, null, null, null, null, 1));
-        GetClientsResponse entityClients = ok(fineractClient().clients.retrieveAll21(newOffice.getOfficeId(), null, null, null, null, null,
-                null, null, null, "id", null, null, 2));
+        GetClientsResponse individualClients = ok(fineractClient().clients.retrieveAllClients(newOffice.getOfficeId(), null, null, null,
+                null, null, null, null, null, null, null, null, 1));
+        GetClientsResponse entityClients = ok(fineractClient().clients.retrieveAllClients(newOffice.getOfficeId(), null, null, null, null,
+                null, null, null, null, "id", null, null, 2));
         // then
         assertThat(individualClients.getTotalFilteredRecords()).isEqualTo(1);
         assertThat(individualClients.getPageItems().get(0).getId()).isEqualTo(individualClientResponse.getClientId());

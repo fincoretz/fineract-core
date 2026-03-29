@@ -28,6 +28,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanPeriodFrequencyType;
 
 /**
  * WorkingCapitalLoanProductRelatedDetail encapsulates the core product parameters of a
@@ -44,9 +45,6 @@ public class WorkingCapitalLoanProductRelatedDetail {
     @Enumerated(EnumType.STRING)
     @Column(name = "amortization_type", nullable = false)
     private WorkingCapitalAmortizationType amortizationType;
-
-    @Column(name = "flat_percentage_amount", scale = 6, precision = 19)
-    private BigDecimal flatPercentageAmount;
 
     @Column(name = "npv_day_count", nullable = false)
     private Integer npvDayCount;
@@ -66,4 +64,11 @@ public class WorkingCapitalLoanProductRelatedDetail {
 
     @Column(name = "discount", scale = 6, precision = 19)
     private BigDecimal discount;
+
+    @Column(name = "delinquency_grace_days", nullable = false)
+    private Integer delinquencyGraceDays = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delinquency_start_type", nullable = false)
+    private WorkingCapitalLoanDelinquencyStartType delinquencyStartType;
 }

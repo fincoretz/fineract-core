@@ -44,7 +44,7 @@ import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecific
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.staff.data.StaffData;
-import org.apache.fineract.organisation.staff.service.StaffReadPlatformService;
+import org.apache.fineract.organisation.staff.service.StaffReadService;
 import org.apache.fineract.portfolio.account.PortfolioAccountType;
 import org.apache.fineract.portfolio.account.data.AccountTransferDTO;
 import org.apache.fineract.portfolio.account.data.AccountTransferData;
@@ -65,7 +65,7 @@ import org.apache.fineract.portfolio.common.service.DropdownReadPlatformService;
 import org.apache.fineract.portfolio.group.data.GroupGeneralData;
 import org.apache.fineract.portfolio.group.service.GroupReadPlatformService;
 import org.apache.fineract.portfolio.interestratechart.data.InterestRateChartData;
-import org.apache.fineract.portfolio.interestratechart.service.InterestRateChartReadPlatformService;
+import org.apache.fineract.portfolio.interestratechart.service.InterestRateChartReadService;
 import org.apache.fineract.portfolio.paymentdetail.data.PaymentDetailData;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeData;
 import org.apache.fineract.portfolio.paymenttype.service.PaymentTypeReadService;
@@ -111,7 +111,7 @@ public class DepositAccountReadPlatformServiceImpl implements DepositAccountRead
     private final PlatformSecurityContext context;
     private final JdbcTemplate jdbcTemplate;
     private final DepositAccountInterestRateChartReadPlatformService accountChartReadPlatformService;
-    private final InterestRateChartReadPlatformService productChartReadPlatformService;
+    private final InterestRateChartReadService productChartReadPlatformService;
     private final PaginationParametersDataValidator paginationParametersDataValidator;
     private final DatabaseSpecificSQLGenerator sqlGenerator;
     private final PaginationHelper paginationHelper;
@@ -121,7 +121,7 @@ public class DepositAccountReadPlatformServiceImpl implements DepositAccountRead
     private final DepositProductReadPlatformService depositProductReadPlatformService;
     private final SavingsDropdownReadPlatformService savingsDropdownReadPlatformService;
     private final ChargeReadPlatformService chargeReadPlatformService;
-    private final StaffReadPlatformService staffReadPlatformService;
+    private final StaffReadService staffReadPlatformService;
     private final DepositsDropdownReadPlatformService depositsDropdownReadPlatformService;
     private final SavingsAccountReadPlatformService savingsAccountReadPlatformService;
     private final RecurringAccountDepositTransactionTemplateMapper rdTransactionTemplateMapper = new RecurringAccountDepositTransactionTemplateMapper();

@@ -42,6 +42,7 @@ import org.apache.fineract.infrastructure.core.service.MathUtil;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
+import org.apache.fineract.portfolio.loanaccount.loanschedule.data.InterestRecalculationAdditionalDetailData;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleModelPeriod;
 import org.apache.fineract.portfolio.loanproduct.domain.AllocationType;
 import org.apache.fineract.portfolio.repaymentwithpostdatedchecks.domain.PostDatedChecks;
@@ -283,7 +284,7 @@ public class LoanRepaymentScheduleInstallment extends AbstractAuditableWithUTCDa
             final Integer installmentNumber, final LocalDate fromDate, final LocalDate dueDate, final BigDecimal principal,
             final BigDecimal interest) {
         return new LoanRepaymentScheduleInstallment(loan, installmentNumber, fromDate, dueDate, principal, interest, null, null, null, null,
-                null, null, false, false, false);
+                null, null, false, false, true);
     }
 
     public static LoanRepaymentScheduleInstallment getLastNonDownPaymentInstallment(List<LoanRepaymentScheduleInstallment> installments) {
@@ -1139,7 +1140,7 @@ public class LoanRepaymentScheduleInstallment extends AbstractAuditableWithUTCDa
     public void copyFrom(final LoanScheduleModelPeriod period) {
         // Reset fields and relations
         resetBalances();
-        updateLoanCompoundingDetails(period.getLoanCompoundingDetails());
+        updateLoanCompoundingDetails(InterestRecalculationAdditionalDetailData.toEntities(period.getLoanCompoundingDetails()));
         getInstallmentCharges().clear();
         getPostDatedChecks().clear();
         // Update fields

@@ -50,6 +50,7 @@ import org.apache.fineract.infrastructure.security.service.PlatformPasswordEncod
 import org.apache.fineract.infrastructure.security.service.RandomPasswordGenerator;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.staff.domain.Staff;
+import org.apache.fineract.organisation.staff.domain.StaffEnumerations;
 import org.apache.fineract.useradministration.service.AppUserConstants;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -82,6 +83,14 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
 
     @Column(name = "nonlocked", nullable = false)
     private boolean accountNonLocked;
+
+    @Getter
+    @Column(name = "failed_login_attempts", nullable = false)
+    private int failedLoginAttempts;
+
+    @Getter
+    @Column(name = "is_login_retries_enabled", nullable = false)
+    private boolean loginRetryLimitEnabled;
 
     @Column(name = "nonexpired_credentials", nullable = false)
     private boolean credentialsNonExpired;
@@ -154,6 +163,10 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
         final boolean userCredentialsNonExpired = true;
         final boolean userAccountNonLocked = true;
         final boolean cannotChangePassword = false;
+        boolean loginRetryLimitEnabled = false;
+        if (command.parameterExists(AppUserConstants.IS_LOGIN_RETRIES_ENABLED)) {
+            loginRetryLimitEnabled = command.booleanPrimitiveValueOfParameterNamed(AppUserConstants.IS_LOGIN_RETRIES_ENABLED);
+        }
 
         final Collection<SimpleGrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("DUMMY_ROLE_NOT_USED_OR_PERSISTED_TO_AVOID_EXCEPTION"));
@@ -165,13 +178,18 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
         final String firstname = command.stringValueOfParameterNamed("firstname");
         final String lastname = command.stringValueOfParameterNamed("lastname");
 
-        return new AppUser(userOffice, user, allRoles, email, firstname, lastname, linkedStaff, passwordNeverExpire, cannotChangePassword);
+        final AppUser appUser = new AppUser(userOffice, user, allRoles, email, firstname, lastname, linkedStaff, passwordNeverExpire,
+                cannotChangePassword);
+        appUser.updateLoginRetryLimitEnabled(resolveLoginRetryLimitEnabled(username, loginRetryLimitEnabled));
+        return appUser;
     }
 
     protected AppUser() {
         this.accountNonLocked = false;
         this.credentialsNonExpired = false;
         this.roles = new HashSet<>();
+        this.failedLoginAttempts = 0;
+        this.loginRetryLimitEnabled = false;
     }
 
     public AppUser(final Office office, final User user, final Set<Role> roles, final String email, final String firstname,
@@ -192,12 +210,14 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
         this.staff = staff;
         this.passwordNeverExpires = passwordNeverExpire;
         this.cannotChangePassword = cannotChangePassword;
+        this.failedLoginAttempts = 0;
+        this.loginRetryLimitEnabled = false;
     }
 
     public EnumOptionData organisationalRoleData() {
         EnumOptionData organisationalRole = null;
-        if (this.staff != null) {
-            organisationalRole = this.staff.organisationalRoleData();
+        if (this.staff != null && this.staff.getOrganisationalRoleType() != null) {
+            organisationalRole = StaffEnumerations.organisationalRole(this.staff.getOrganisationalRoleType());
         }
         return organisationalRole;
     }
@@ -313,6 +333,14 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
             this.passwordNeverExpires = newValue;
         }
 
+        if (command.hasParameter(AppUserConstants.IS_LOGIN_RETRIES_ENABLED)) {
+            final boolean requestedValue = command.booleanPrimitiveValueOfParameterNamed(AppUserConstants.IS_LOGIN_RETRIES_ENABLED);
+            final boolean effectiveValue = resolveLoginRetryLimitEnabled(this.username, requestedValue);
+            if (effectiveValue != this.loginRetryLimitEnabled) {
+                actualChanges.put(AppUserConstants.IS_LOGIN_RETRIES_ENABLED, effectiveValue);
+                updateLoginRetryLimitEnabled(effectiveValue);
+            }
+        }
         return actualChanges;
     }
 
@@ -380,8 +408,8 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
     }
 
     public String getDisplayName() {
-        if (this.staff != null && StringUtils.isNotBlank(this.staff.displayName())) {
-            return this.staff.displayName();
+        if (this.staff != null && StringUtils.isNotBlank(this.staff.getDisplayName())) {
+            return this.staff.getDisplayName();
         }
         String firstName = StringUtils.isNotBlank(this.firstname) ? this.firstname : "";
         if (StringUtils.isNotBlank(this.lastname)) {
@@ -398,6 +426,28 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
     @Override
     public boolean isAccountNonLocked() {
         return this.accountNonLocked;
+    }
+
+    public void registerFailedLoginAttempt(int maxRetries) {
+        if (!this.loginRetryLimitEnabled) {
+            return;
+        }
+        this.failedLoginAttempts = this.failedLoginAttempts + 1;
+        if (maxRetries > 0 && this.failedLoginAttempts >= maxRetries) {
+            this.accountNonLocked = false;
+        }
+    }
+
+    public void resetFailedLoginAttempts() {
+        this.failedLoginAttempts = 0;
+    }
+
+    public void updateLoginRetryLimitEnabled(final boolean loginRetryLimitEnabled) {
+        this.loginRetryLimitEnabled = resolveLoginRetryLimitEnabled(this.username, loginRetryLimitEnabled);
+        if (!this.loginRetryLimitEnabled) {
+            this.failedLoginAttempts = 0;
+            this.accountNonLocked = true;
+        }
     }
 
     @Override
@@ -614,7 +664,7 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
     public String getStaffDisplayName() {
         String staffDisplayName = null;
         if (this.staff != null) {
-            staffDisplayName = this.staff.displayName();
+            staffDisplayName = this.staff.getDisplayName();
         }
         return staffDisplayName;
     }
@@ -642,6 +692,13 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
 
     public boolean isNotEnabled() {
         return !isEnabled();
+    }
+
+    private static boolean resolveLoginRetryLimitEnabled(final String username, final boolean requestedValue) {
+        if (AppUserConstants.SYSTEM_USER_NAME.equalsIgnoreCase(username)) {
+            return false;
+        }
+        return requestedValue;
     }
 
     @Override

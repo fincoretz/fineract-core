@@ -66,8 +66,6 @@ public final class WorkingCapitalLoanProductApiResourceSwagger {
         // Core product parameters (related detail: amortization, repayment defaults)
         @Schema(example = "EIR", allowableValues = { "EIR", "FLAT" })
         public String amortizationType;
-        @Schema(example = "5.5")
-        public BigDecimal flatPercentageAmount;
         @Schema(example = "1")
         public Long delinquencyBucketId;
         @Schema(example = "365")
@@ -95,6 +93,10 @@ public final class WorkingCapitalLoanProductApiResourceSwagger {
         public Integer repaymentEvery;
         @Schema(example = "DAYS", allowableValues = { "DAYS", "MONTHS", "YEARS" })
         public String repaymentFrequencyType;
+        @Schema(example = "1")
+        public Integer delinquencyGraceDays;
+        @Schema(example = "LOAN_CREATION", description = "Delinquency start type: LOAN_CREATION or DISBURSEMENT")
+        public String delinquencyStartType;
 
         // Configurable attributes
         public PostAllowAttributeOverrides allowAttributeOverrides;
@@ -132,8 +134,6 @@ public final class WorkingCapitalLoanProductApiResourceSwagger {
 
             private PostAllowAttributeOverrides() {}
 
-            @Schema(example = "true")
-            public Boolean flatPercentageAmount;
             @Schema(example = "true")
             public Boolean delinquencyBucketClassification;
             @Schema(example = "true")
@@ -185,8 +185,6 @@ public final class WorkingCapitalLoanProductApiResourceSwagger {
 
         // Core product parameters (related detail)
         public StringEnumOptionData amortizationType;
-        @Schema(example = "5.5")
-        public BigDecimal flatPercentageAmount;
         public GetDelinquencyBucket delinquencyBucket;
         @Schema(example = "365")
         public Integer npvDayCount;
@@ -210,6 +208,9 @@ public final class WorkingCapitalLoanProductApiResourceSwagger {
         @Schema(example = "30")
         public Integer repaymentEvery;
         public StringEnumOptionData repaymentFrequencyType;
+        @Schema(example = "1")
+        public Integer delinquencyGraceDays;
+        public StringEnumOptionData delinquencyStartType;
 
         // Configurable attributes
         public GetConfigurableAttributes allowAttributeOverrides;
@@ -268,8 +269,6 @@ public final class WorkingCapitalLoanProductApiResourceSwagger {
             private GetConfigurableAttributes() {}
 
             @Schema(example = "true")
-            public Boolean flatPercentageAmount;
-            @Schema(example = "true")
             public Boolean delinquencyBucketClassification;
             @Schema(example = "true")
             public Boolean discountDefault;
@@ -290,6 +289,7 @@ public final class WorkingCapitalLoanProductApiResourceSwagger {
         public List<StringEnumOptionData> amortizationTypeOptions;
         public List<StringEnumOptionData> periodFrequencyTypeOptions;
         public List<StringEnumOptionData> advancedPaymentAllocationTypes;
+        public List<StringEnumOptionData> delinquencyStartTypeOptions;
         public List<EnumOptionData> advancedPaymentAllocationTransactionTypes;
         public List<GetWorkingCapitalLoanProductsResponse.GetDelinquencyBucket> delinquencyBucketOptions;
     }
@@ -325,8 +325,6 @@ public final class WorkingCapitalLoanProductApiResourceSwagger {
 
         // Core product parameters (related detail)
         public StringEnumOptionData amortizationType;
-        @Schema(example = "5.5")
-        public BigDecimal flatPercentageAmount;
         public GetWorkingCapitalLoanProductsResponse.GetDelinquencyBucket delinquencyBucket;
         @Schema(example = "365")
         public Integer npvDayCount;
@@ -350,6 +348,9 @@ public final class WorkingCapitalLoanProductApiResourceSwagger {
         @Schema(example = "30")
         public Integer repaymentEvery;
         public StringEnumOptionData repaymentFrequencyType;
+        @Schema(example = "1")
+        public Integer delinquencyGraceDays;
+        public StringEnumOptionData delinquencyStartType;
 
         // Configurable attributes
         public GetWorkingCapitalLoanProductsResponse.GetConfigurableAttributes allowAttributeOverrides;
@@ -387,8 +388,6 @@ public final class WorkingCapitalLoanProductApiResourceSwagger {
         // Core product parameters (related detail)
         @Schema(example = "EIR", allowableValues = { "EIR", "FLAT" })
         public String amortizationType;
-        @Schema(example = "5.5")
-        public BigDecimal flatPercentageAmount;
         @Schema(example = "1")
         public Long delinquencyBucketId;
         @Schema(example = "365")
@@ -416,6 +415,10 @@ public final class WorkingCapitalLoanProductApiResourceSwagger {
         public Integer repaymentEvery;
         @Schema(example = "DAYS", allowableValues = { "DAYS", "MONTHS", "YEARS" })
         public String repaymentFrequencyType;
+        @Schema(example = "1")
+        public Integer delinquencyGraceDays;
+        @Schema(example = "LOAN_CREATION", description = "Delinquency start type: LOAN_CREATION or DISBURSEMENT")
+        public String delinquencyStartType;
 
         // Configurable attributes
         public PostWorkingCapitalLoanProductsRequest.PostAllowAttributeOverrides allowAttributeOverrides;
