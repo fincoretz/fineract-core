@@ -540,6 +540,30 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder createWorkingCapitalBreach() {
+        this.actionName = "CREATE";
+        this.entityName = "WORKINGCAPITALBREACH";
+        this.entityId = null;
+        this.href = "/working-capital-breach/breaches";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateWorkingCapitalBreach(final Long breachId) {
+        this.actionName = "UPDATE";
+        this.entityName = "WORKINGCAPITALBREACH";
+        this.entityId = breachId;
+        this.href = "/working-capital-breach/breaches/" + breachId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteWorkingCapitalBreach(final Long breachId) {
+        this.actionName = "DELETE";
+        this.entityName = "WORKINGCAPITALBREACH";
+        this.entityId = breachId;
+        this.href = "/working-capital-breach/breaches/" + breachId;
+        return this;
+    }
+
     public CommandWrapperBuilder createWorkingCapitalLoanApplication() {
         this.actionName = "CREATE";
         this.entityName = "WORKINGCAPITALLOAN";
@@ -602,6 +626,15 @@ public class CommandWrapperBuilder {
         this.entityName = "WORKINGCAPITALLOAN";
         this.entityId = loanId;
         this.href = "/workingcapitalloans/" + loanId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createWorkingCapitalLoanDelinquencyAction(final Long workingCapitalLoanId) {
+        this.actionName = "CREATE";
+        this.entityName = "WC_DELINQUENCY_ACTION";
+        this.entityId = workingCapitalLoanId;
+        this.loanId = workingCapitalLoanId;
+        this.href = "/working-capital-loans/" + workingCapitalLoanId + "/delinquency-actions";
         return this;
     }
 
