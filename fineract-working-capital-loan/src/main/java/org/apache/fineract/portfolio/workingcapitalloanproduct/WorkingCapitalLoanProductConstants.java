@@ -55,6 +55,7 @@ public final class WorkingCapitalLoanProductConstants {
     public static final String repaymentEveryParamName = "repaymentEvery";
     public static final String repaymentFrequencyTypeParamName = "repaymentFrequencyType";
     public static final String breachIdParamName = "breachId";
+    public static final String nearBreachIdParamName = "nearBreachId";
 
     // Configurable attributes (same as LoanProduct)
     public static final String allowAttributeOverridesParamName = "allowAttributeOverrides";
@@ -67,6 +68,34 @@ public final class WorkingCapitalLoanProductConstants {
     // Delinquency grace
     public static final String delinquencyGraceDaysParamName = "delinquencyGraceDays";
     public static final String delinquencyStartTypeParamName = "delinquencyStartType";
+
+    // Accounting
+    public static final String accountingRuleParamName = "accountingRule";
+    public static final String fundSourceAccountIdParamName = "fundSourceAccountId";
+    public static final String loanPortfolioAccountIdParamName = "loanPortfolioAccountId";
+    public static final String transfersInSuspenseAccountIdParamName = "transfersInSuspenseAccountId";
+    public static final String deferredIncomeLiabilityAccountIdParamName = "deferredIncomeLiabilityAccountId";
+    public static final String incomeFromDiscountFeeAccountIdParamName = "incomeFromDiscountFeeAccountId";
+    public static final String incomeFromFeeAccountIdParamName = "incomeFromFeeAccountId";
+    public static final String incomeFromPenaltyAccountIdParamName = "incomeFromPenaltyAccountId";
+    public static final String incomeFromRecoveryAccountIdParamName = "incomeFromRecoveryAccountId";
+    public static final String writeOffAccountIdParamName = "writeOffAccountId";
+    public static final String overpaymentLiabilityAccountIdParamName = "overpaymentLiabilityAccountId";
+    public static final String incomeFromChargeOffInterestAccountIdParamName = "incomeFromChargeOffInterestAccountId";
+    public static final String incomeFromChargeOffFeesAccountIdParamName = "incomeFromChargeOffFeesAccountId";
+    public static final String incomeFromChargeOffPenaltyAccountIdParamName = "incomeFromChargeOffPenaltyAccountId";
+    public static final String incomeFromGoodwillCreditInterestAccountIdParamName = "incomeFromGoodwillCreditInterestAccountId";
+    public static final String incomeFromGoodwillCreditFeesAccountIdParamName = "incomeFromGoodwillCreditFeesAccountId";
+    public static final String incomeFromGoodwillCreditPenaltyAccountIdParamName = "incomeFromGoodwillCreditPenaltyAccountId";
+    public static final String goodwillCreditAccountIdParamName = "goodwillCreditAccountId";
+    public static final String chargeOffExpenseAccountIdParamName = "chargeOffExpenseAccountId";
+    public static final String chargeOffFraudExpenseAccountIdParamName = "chargeOffFraudExpenseAccountId";
+
+    // Near Breach
+    public static final String nearBreachNameParamName = "nearBreachName";
+    public static final String nearBreachFrequencyParamName = "nearBreachFrequency";
+    public static final String nearBreachFrequencyTypeParamName = "nearBreachFrequencyType";
+    public static final String nearBreachThresholdParamName = "nearBreachThreshold";
 
     // Resource name for permissions
     public static final String WCLP_RESOURCE_NAME = "WORKINGCAPITALLOANPRODUCT";

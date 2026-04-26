@@ -69,6 +69,7 @@ public class WorkingCapitalLoanTransaction extends AbstractAuditableWithUTCDateT
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "classification_cv_id")
+    @Setter
     private CodeValue classification;
 
     @Column(name = "external_id", length = 100, unique = true)
@@ -101,18 +102,41 @@ public class WorkingCapitalLoanTransaction extends AbstractAuditableWithUTCDateT
     }
 
     public static WorkingCapitalLoanTransaction disbursement(final WorkingCapitalLoan loan, final BigDecimal amount,
-            final PaymentDetail paymentDetail, final LocalDate disbursementDate, final ExternalId externalId) {
+            final PaymentDetail paymentDetail, final LocalDate disbursementDate, final ExternalId externalId,
+            final CodeValue classification) {
         final WorkingCapitalLoanTransaction txn = new WorkingCapitalLoanTransaction();
-        txn.wcLoan = loan;
-        txn.transactionType = LoanTransactionType.DISBURSEMENT;
-        txn.transactionDate = disbursementDate;
-        txn.submittedOnDate = disbursementDate;
-        txn.transactionAmount = amount;
-        txn.paymentDetail = paymentDetail;
-        txn.externalId = externalId != null ? externalId : ExternalId.empty();
-        txn.reversed = false;
-        txn.reversalExternalId = null;
-        txn.reversedOnDate = null;
+        txn.initialize(loan, LoanTransactionType.DISBURSEMENT, disbursementDate, amount, paymentDetail, classification, externalId);
         return txn;
+    }
+
+    public static WorkingCapitalLoanTransaction repayment(final WorkingCapitalLoan loan, final BigDecimal amount,
+            final PaymentDetail paymentDetail, final LocalDate transactionDate, final CodeValue classification,
+            final ExternalId externalId) {
+        final WorkingCapitalLoanTransaction txn = new WorkingCapitalLoanTransaction();
+        txn.initialize(loan, LoanTransactionType.REPAYMENT, transactionDate, amount, paymentDetail, classification, externalId);
+        return txn;
+    }
+
+    public static WorkingCapitalLoanTransaction creditBalanceRefund(final WorkingCapitalLoan loan, final BigDecimal amount,
+            final PaymentDetail paymentDetail, final LocalDate transactionDate, final CodeValue classification,
+            final ExternalId externalId) {
+        final WorkingCapitalLoanTransaction txn = new WorkingCapitalLoanTransaction();
+        txn.initialize(loan, LoanTransactionType.CREDIT_BALANCE_REFUND, transactionDate, amount, paymentDetail, classification, externalId);
+        return txn;
+    }
+
+    private void initialize(final WorkingCapitalLoan loan, final LoanTransactionType transactionType, final LocalDate transactionDate,
+            final BigDecimal amount, final PaymentDetail paymentDetail, final CodeValue classification, final ExternalId externalId) {
+        this.wcLoan = loan;
+        this.transactionType = transactionType;
+        this.transactionDate = transactionDate;
+        this.submittedOnDate = transactionDate;
+        this.transactionAmount = amount;
+        this.paymentDetail = paymentDetail;
+        this.classification = classification;
+        this.externalId = externalId != null ? externalId : ExternalId.empty();
+        this.reversed = false;
+        this.reversalExternalId = null;
+        this.reversedOnDate = null;
     }
 }

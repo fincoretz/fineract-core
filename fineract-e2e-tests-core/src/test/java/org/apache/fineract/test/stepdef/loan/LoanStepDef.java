@@ -2312,6 +2312,29 @@ public class LoanStepDef extends AbstractStepDef {
         checkLoanTransactionTab(data, transactions, header, resourceId);
     }
 
+    @Then("Loan Transactions tab has the following new buy down fee amortization data:")
+    public void loanTransactionsTabCheckNewBuyDownFeeAmortization(DataTable table) {
+        PostLoansResponse loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
+        long loanId = loanCreateResponse.getLoanId();
+        String resourceId = String.valueOf(loanId);
+
+        List<List<String>> expectedAmortization = testContext().get(TestContextKey.VERIFIED_LOAN_BUY_DOWN_FEE_AMORTIZATION);
+        if (expectedAmortization == null) {
+            expectedAmortization = new ArrayList<>();
+            testContext().set(TestContextKey.VERIFIED_LOAN_BUY_DOWN_FEE_AMORTIZATION, expectedAmortization);
+        }
+
+        List<GetLoansLoanIdTransactions> transactions = getBuyDownFeeAmortizationTransactions(loanId);
+        List<List<String>> data = table.asLists();
+        expectedAmortization.addAll(data.subList(1, data.size()));
+        List<String> header = table.row(0);
+
+        checkLoanTransactionTabRows(expectedAmortization, transactions, header, resourceId);
+        assertThat(transactions.size())
+                .as(ErrorMessageHelper.nrOfLinesWrongInTransactionsTab(resourceId, transactions.size(), expectedAmortization.size()))
+                .isEqualTo(expectedAmortization.size());
+    }
+
     @Then("Loan Transactions tab has the following new accrual data:")
     public void loanTransactionsTabCheckNewAccruals(DataTable table) {
         PostLoansResponse loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
@@ -2402,6 +2425,24 @@ public class LoanStepDef extends AbstractStepDef {
                 Map.of("staffInSelectedOfficeOnly", "false", "associations", "transactions")));
         return loanDetailsResponse.getTransactions().stream()
                 .filter(lt -> isLoanTransactionAccrual(lt) || isLoanTransactionAccrualAdjustment(lt)).toList();
+    }
+
+    public List<GetLoansLoanIdTransactions> getBuyDownFeeAmortizationTransactions(Long loanId) {
+        GetLoansLoanIdResponse loanDetailsResponse = ok(() -> fineractClient.loans().retrieveLoan(loanId,
+                Map.of("staffInSelectedOfficeOnly", "false", "associations", "transactions")));
+        return loanDetailsResponse.getTransactions().stream()
+                .filter(lt -> isLoanTransactionBuyDownFeeAmortization(lt) || isLoanTransactionBuyDownFeeAmortizationAdjustment(lt))
+                .toList();
+    }
+
+    private boolean isLoanTransactionBuyDownFeeAmortization(GetLoansLoanIdTransactions lt) {
+        assert lt.getType() != null;
+        return "Buy Down Fee Amortization".equalsIgnoreCase(lt.getType().getValue());
+    }
+
+    private boolean isLoanTransactionBuyDownFeeAmortizationAdjustment(GetLoansLoanIdTransactions lt) {
+        assert lt.getType() != null;
+        return "Buy Down Fee Amortization Adjustment".equalsIgnoreCase(lt.getType().getValue());
     }
 
     public void checkLoanTransactionTabRows(List<List<String>> data, List<GetLoansLoanIdTransactions> transactions, List<String> header,
@@ -3307,8 +3348,7 @@ public class LoanStepDef extends AbstractStepDef {
         Long loanProductId = loanProductResolver.resolve(product);
         log.debug("loanProductId: {}", loanProductId);
 
-        GetLoanProductsProductIdResponse loanProductDetails = ok(
-                () -> fineractClient.loanProducts().retrieveLoanProductDetails(loanProductId));
+        GetLoanProductsProductIdResponse loanProductDetails = ok(() -> fineractClient.loanProducts().retrieveOneLoanProduct(loanProductId));
         List<AdvancedPaymentData> paymentAllocation = loanProductDetails.getPaymentAllocation();
 
         List<AdvancedPaymentData> newPaymentAllocation = new ArrayList<>();
@@ -3558,7 +3598,7 @@ public class LoanStepDef extends AbstractStepDef {
         final DefaultLoanProduct product = DefaultLoanProduct.valueOf(loanProductName);
         final Long loanProductId = loanProductResolver.resolve(product);
         final GetLoanProductsProductIdResponse loanProductDetails = ok(
-                () -> fineractClient.loanProducts().retrieveLoanProductDetailsUniversal(loanProductId, Map.of("template", "true")));
+                () -> fineractClient.loanProducts().retrieveOneLoanProductUniversal(loanProductId, Map.of("template", "true")));
         assertNotNull(loanProductDetails);
         final List<GetLoanProductsChargeOffReasonOptions> chargeOffReasonOptions = loanProductDetails.getChargeOffReasonOptions();
         assertNotNull(chargeOffReasonOptions);
@@ -3668,7 +3708,7 @@ public class LoanStepDef extends AbstractStepDef {
         final DefaultLoanProduct product = DefaultLoanProduct.valueOf(loanProduct);
         final Long loanProductId = loanProductResolver.resolve(product);
         final GetLoanProductsProductIdResponse loanProductDetails = ok(
-                () -> fineractClient.loanProducts().retrieveLoanProductDetails(loanProductId));
+                () -> fineractClient.loanProducts().retrieveOneLoanProduct(loanProductId));
 
         final List<PostLoansRequestChargeData> loanCharges = new ArrayList<>();
 
@@ -5977,7 +6017,7 @@ public class LoanStepDef extends AbstractStepDef {
     public void callInternalAPIToRemoveProgressiveLoanModelByLoanId() {
         final PostLoansResponse loanCreateResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         final long loanId = loanCreateResponse.getLoanId();
-        ok(() -> fineractClient.progressiveLoan().deleteModel(loanId));
+        ok(() -> fineractClient.progressiveLoan().deleteInternalProgressiveLoan(loanId));
     }
 
     public static AdvancedPaymentData editPaymentAllocationFutureInstallment(String transactionType, String futureInstallmentAllocationRule,

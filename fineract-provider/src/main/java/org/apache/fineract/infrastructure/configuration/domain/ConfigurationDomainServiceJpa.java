@@ -586,4 +586,14 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
                 GlobalConfigurationConstants.MAX_LOGIN_RETRY_ATTEMPTS);
         return property.getValue() == null ? null : property.getValue().intValue();
     }
+
+    @Override
+    public boolean isAllowCashAndNonCashAccrual() {
+        return getGlobalConfigurationPropertyData(GlobalConfigurationConstants.ALLOW_CASH_AND_NON_CASH_ACCRUAL).isEnabled();
+    }
+
+    @Override
+    public boolean isBlockTransactionsOnClosedOverpaidLoansEnabled() {
+        return getGlobalConfigurationPropertyData(GlobalConfigurationConstants.BLOCK_TRANSACTIONS_ON_CLOSED_OVERPAID_LOANS).isEnabled();
+    }
 }

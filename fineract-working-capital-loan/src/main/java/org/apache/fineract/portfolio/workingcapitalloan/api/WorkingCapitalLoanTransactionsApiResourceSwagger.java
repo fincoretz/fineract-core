@@ -73,6 +73,8 @@ public final class WorkingCapitalLoanTransactionsApiResourceSwagger {
         public String reversalExternalId;
         @Schema(example = "[2024, 2, 5]")
         public LocalDate reversedOnDate;
+        @Schema(description = "Transaction classification (code value)")
+        public CodeValueData classification;
         @Schema(example = "10000.00", description = "Principal portion from allocation")
         public BigDecimal principalPortion;
         @Schema(example = "0.00", description = "Fee charges portion from allocation")
@@ -111,5 +113,75 @@ public final class WorkingCapitalLoanTransactionsApiResourceSwagger {
         public String receiptNumber;
         @Schema(example = "ban123")
         public String bankNumber;
+    }
+
+    @Schema(description = "Payment details for transaction request payload")
+    public static final class PostWorkingCapitalLoanTransactionsPaymentDetailRequest {
+
+        private PostWorkingCapitalLoanTransactionsPaymentDetailRequest() {}
+
+        @Schema(example = "4", description = "Payment type identifier (e.g. AUTOPAYMENT)")
+        public Long paymentTypeId;
+        @Schema(example = "acc123")
+        public String accountNumber;
+        @Schema(example = "che123")
+        public String checkNumber;
+        @Schema(example = "rou123")
+        public String routingCode;
+        @Schema(example = "rec123")
+        public String receiptNumber;
+        @Schema(example = "ban123")
+        public String bankNumber;
+    }
+
+    @Schema(description = "Code value data (id + name)")
+    public static final class CodeValueData {
+
+        private CodeValueData() {}
+
+        @Schema(example = "1")
+        public Long id;
+        @Schema(example = "Some classification")
+        public String name;
+    }
+
+    @Schema(description = "Request for transaction command: repayment or creditBalanceRefund")
+    public static final class PostWorkingCapitalLoanTransactionsRequest {
+
+        private PostWorkingCapitalLoanTransactionsRequest() {}
+
+        @Schema(example = "en_GB")
+        public String locale;
+        @Schema(example = "dd MMMM yyyy")
+        public String dateFormat;
+        @Schema(example = "28 June 2024", description = "Transaction date")
+        public String transactionDate;
+        @Schema(example = "100.0", description = "Transaction amount")
+        public BigDecimal transactionAmount;
+        @Schema(example = "12", description = "Optional code value id for transaction classification")
+        public Long classificationId;
+        @Schema(example = "Repayment note")
+        public String note;
+        @Schema(example = "repayment-ext-001")
+        public String externalId;
+        @Schema(description = "Payment details")
+        public PostWorkingCapitalLoanTransactionsPaymentDetailRequest paymentDetails;
+    }
+
+    @Schema(description = "Response for repayment/creditBalanceRefund transaction command")
+    public static final class PostWorkingCapitalLoanTransactionsResponse {
+
+        private PostWorkingCapitalLoanTransactionsResponse() {}
+
+        @Schema(example = "1")
+        public Long officeId;
+        @Schema(example = "2")
+        public Long clientId;
+        @Schema(example = "3")
+        public Long loanId;
+        @Schema(example = "4")
+        public Long resourceId;
+        @Schema(example = "repayment-ext-001")
+        public String resourceExternalId;
     }
 }

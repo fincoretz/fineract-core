@@ -163,4 +163,8 @@ public interface ConfigurationDomainService {
     boolean isMaxLoginRetriesEnabled();
 
     Integer retrieveMaxLoginRetries();
+
+    boolean isAllowCashAndNonCashAccrual();
+
+    boolean isBlockTransactionsOnClosedOverpaidLoansEnabled();
 }

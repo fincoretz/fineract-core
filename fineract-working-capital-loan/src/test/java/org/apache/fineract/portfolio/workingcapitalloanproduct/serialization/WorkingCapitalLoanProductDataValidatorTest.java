@@ -30,6 +30,7 @@ import org.apache.fineract.infrastructure.core.exception.InvalidJsonException;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.UnsupportedParameterException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
+import org.apache.fineract.portfolio.workingcapitalloannearbreach.validator.WorkingCapitalNearBreachParseAndValidator;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.WorkingCapitalLoanProductConstants;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAdvancedPaymentAllocationsJsonParser;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.repository.WorkingCapitalLoanProductRepository;
@@ -52,12 +53,14 @@ class WorkingCapitalLoanProductDataValidatorTest {
     @Mock
     private WorkingCapitalPaymentAllocationDataValidator paymentAllocationDataValidator;
     private WorkingCapitalLoanProductDataValidator validator;
+    @Mock
+    private WorkingCapitalNearBreachParseAndValidator workingCapitalNearBreachValidator;
 
     @BeforeEach
     void setUp() {
         final FromJsonHelper fromApiJsonHelper = new FromJsonHelper();
         validator = new WorkingCapitalLoanProductDataValidator(fromApiJsonHelper, repository, advancedPaymentAllocationsJsonParser,
-                paymentAllocationDataValidator);
+                paymentAllocationDataValidator, workingCapitalNearBreachValidator);
     }
 
     @Test
@@ -255,6 +258,7 @@ class WorkingCapitalLoanProductDataValidatorTest {
         jsonObject.addProperty(WorkingCapitalLoanProductConstants.periodPaymentRateParamName, 1.0);
         jsonObject.addProperty(WorkingCapitalLoanProductConstants.repaymentEveryParamName, 30);
         jsonObject.addProperty(WorkingCapitalLoanProductConstants.repaymentFrequencyTypeParamName, "DAYS");
+        jsonObject.addProperty(WorkingCapitalLoanProductConstants.accountingRuleParamName, "NONE");
         jsonObject.add(WorkingCapitalLoanProductConstants.paymentAllocationParamName, createDefaultPaymentAllocationJson());
         return jsonObject;
     }

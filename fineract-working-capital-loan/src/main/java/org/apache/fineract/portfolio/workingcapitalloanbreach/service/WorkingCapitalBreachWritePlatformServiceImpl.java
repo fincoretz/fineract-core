@@ -21,10 +21,13 @@ package org.apache.fineract.portfolio.workingcapitalloanbreach.service;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
+import org.apache.fineract.portfolio.common.service.Validator;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanPeriodFrequencyType;
 import org.apache.fineract.portfolio.workingcapitalloanbreach.data.WorkingCapitalBreachRequest;
 import org.apache.fineract.portfolio.workingcapitalloanbreach.domain.WorkingCapitalBreach;
@@ -46,6 +49,7 @@ public class WorkingCapitalBreachWritePlatformServiceImpl implements WorkingCapi
     private static final String BREACH_FREQUENCY_TYPE_PARAM = "breachFrequencyType";
     private static final String BREACH_AMOUNT_CALCULATION_TYPE_PARAM = "breachAmountCalculationType";
     private static final String BREACH_AMOUNT_PARAM = "breachAmount";
+    private static final String NAME_PARAM = "name";
 
     @Override
     @Transactional
@@ -80,10 +84,11 @@ public class WorkingCapitalBreachWritePlatformServiceImpl implements WorkingCapi
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(breachId).build();
     }
 
-    private WorkingCapitalBreach createAndPersistBreach(final Integer breachFrequency,
+    private WorkingCapitalBreach createAndPersistBreach(final String name, final Integer breachFrequency,
             final WorkingCapitalLoanPeriodFrequencyType breachFrequencyType,
             final WorkingCapitalBreachAmountCalculationType breachAmountCalculationType, final BigDecimal breachAmount) {
         final WorkingCapitalBreach breach = new WorkingCapitalBreach();
+        breach.setName(name);
         breach.setBreachFrequency(breachFrequency);
         breach.setBreachFrequencyType(breachFrequencyType);
         breach.setBreachAmountCalculationType(breachAmountCalculationType);
@@ -92,6 +97,7 @@ public class WorkingCapitalBreachWritePlatformServiceImpl implements WorkingCapi
     }
 
     private WorkingCapitalBreach createAndPersistBreach(final WorkingCapitalBreachRequest request, final Map<String, Object> changes) {
+        validateDuplicateName(request.name(), null);
         final WorkingCapitalLoanPeriodFrequencyType breachFrequencyType = request.breachFrequencyType() != null
                 ? WorkingCapitalLoanPeriodFrequencyType.fromString(request.breachFrequencyType())
                 : null;
@@ -99,9 +105,10 @@ public class WorkingCapitalBreachWritePlatformServiceImpl implements WorkingCapi
                 ? WorkingCapitalBreachAmountCalculationType.valueOf(request.breachAmountCalculationType())
                 : null;
 
-        final WorkingCapitalBreach created = createAndPersistBreach(request.breachFrequency(), breachFrequencyType,
+        final WorkingCapitalBreach created = createAndPersistBreach(request.name(), request.breachFrequency(), breachFrequencyType,
                 breachAmountCalculationType, request.breachAmount());
 
+        changes.put(NAME_PARAM, created.getName());
         changes.put(BREACH_FREQUENCY_PARAM, created.getBreachFrequency());
         changes.put(BREACH_FREQUENCY_TYPE_PARAM, created.getBreachFrequencyType() != null ? created.getBreachFrequencyType().name() : null);
         changes.put(BREACH_AMOUNT_CALCULATION_TYPE_PARAM,
@@ -113,6 +120,7 @@ public class WorkingCapitalBreachWritePlatformServiceImpl implements WorkingCapi
     private WorkingCapitalBreach updateAndPersistBreach(final WorkingCapitalBreach item, final WorkingCapitalBreachRequest request,
             final Map<String, Object> changes) {
         final Integer breachFrequency = request.breachFrequency();
+        final String name = request.name();
         final WorkingCapitalLoanPeriodFrequencyType breachFrequencyType = request.breachFrequencyType() != null
                 ? WorkingCapitalLoanPeriodFrequencyType.fromString(request.breachFrequencyType())
                 : null;
@@ -121,20 +129,25 @@ public class WorkingCapitalBreachWritePlatformServiceImpl implements WorkingCapi
                 : null;
         final BigDecimal breachAmount = request.breachAmount();
 
-        if (isChanged(breachFrequency, item.getBreachFrequency())) {
+        if (Validator.isChanged(name, item.getName())) {
+            validateDuplicateName(name, item.getId());
+            item.setName(name);
+            changes.put(NAME_PARAM, name);
+        }
+        if (Validator.isChanged(breachFrequency, item.getBreachFrequency())) {
             item.setBreachFrequency(breachFrequency);
             changes.put(BREACH_FREQUENCY_PARAM, breachFrequency);
         }
-        if (isChanged(breachFrequencyType, item.getBreachFrequencyType())) {
+        if (Validator.isChanged(breachFrequencyType, item.getBreachFrequencyType())) {
             item.setBreachFrequencyType(breachFrequencyType);
             changes.put(BREACH_FREQUENCY_TYPE_PARAM, breachFrequencyType != null ? breachFrequencyType.name() : null);
         }
-        if (isChanged(breachAmountCalculationType, item.getBreachAmountCalculationType())) {
+        if (Validator.isChanged(breachAmountCalculationType, item.getBreachAmountCalculationType())) {
             item.setBreachAmountCalculationType(breachAmountCalculationType);
             changes.put(BREACH_AMOUNT_CALCULATION_TYPE_PARAM,
                     breachAmountCalculationType != null ? breachAmountCalculationType.name() : null);
         }
-        if (isBigDecimalChanged(breachAmount, item.getBreachAmount())) {
+        if (Validator.isBigDecimalChanged(breachAmount, item.getBreachAmount())) {
             item.setBreachAmount(breachAmount);
             changes.put(BREACH_AMOUNT_PARAM, breachAmount);
         }
@@ -142,20 +155,13 @@ public class WorkingCapitalBreachWritePlatformServiceImpl implements WorkingCapi
         return changes.isEmpty() ? item : repository.save(item);
     }
 
-    private static boolean isChanged(final Object newValue, final Object currentValue) {
-        if (newValue == null) {
-            return currentValue != null;
-        }
-        return !newValue.equals(currentValue);
-    }
-
-    private static boolean isBigDecimalChanged(final BigDecimal newValue, final BigDecimal currentValue) {
-        if (newValue == null) {
-            return currentValue != null;
-        }
-        if (currentValue == null) {
-            return true;
-        }
-        return newValue.compareTo(currentValue) != 0;
+    private void validateDuplicateName(final String name, final Long currentId) {
+        repository.findByName(name).ifPresent(existing -> {
+            final boolean sameEntity = currentId != null && Objects.equals(existing.getId(), currentId);
+            if (!sameEntity) {
+                throw new PlatformDataIntegrityException("error.msg.data.integrity.issue.entity.duplicated",
+                        "Data integrity issue with resource: " + existing.getId());
+            }
+        });
     }
 }

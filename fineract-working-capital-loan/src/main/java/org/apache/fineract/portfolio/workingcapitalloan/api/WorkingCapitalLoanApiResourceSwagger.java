@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.List;
 import org.apache.fineract.infrastructure.core.data.StringEnumOptionData;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
+import org.apache.fineract.portfolio.delinquency.data.DelinquencyRangeData;
 import org.apache.fineract.portfolio.fund.data.FundData;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.api.WorkingCapitalLoanProductApiResourceSwagger;
 
@@ -47,6 +48,7 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public Collection<WorkingCapitalLoanProductApiResourceSwagger.GetWorkingCapitalLoanProductsResponse.GetDelinquencyBucket> delinquencyBucketOptions;
         public List<StringEnumOptionData> periodFrequencyTypeOptions;
         public List<StringEnumOptionData> delinquencyStartTypeOptions;
+        public List<StringEnumOptionData> delinquencyMinimumPaymentTypeOptions;
         public List<WorkingCapitalLoanProductApiResourceSwagger.GetWorkingCapitalLoanProductsResponse.GetWorkingCapitalLoanBreach> breachOptions;
     }
 
@@ -193,6 +195,7 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public BigDecimal discount;
         @Schema(description = "Working capital breach)")
         public WorkingCapitalLoanProductApiResourceSwagger.GetWorkingCapitalLoanProductsResponse.GetWorkingCapitalLoanBreach breach;
+        public WorkingCapitalLoanProductApiResourceSwagger.GetWorkingCapitalLoanNearBreach nearBreach;
         public WorkingCapitalLoanProductApiResourceSwagger.GetWorkingCapitalLoanProductsResponse.GetDelinquencyBucket delinquencyBucket;
         @Schema(example = "3", description = "Number of grace days before delinquency tracking starts")
         public Integer delinquencyGraceDays;
@@ -207,6 +210,8 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public GetBalance balance;
         @Schema(description = "Transaction history (e.g. disbursement).")
         public List<WorkingCapitalLoanTransactionsApiResourceSwagger.GetWorkingCapitalLoanTransactionIdResponse> transactions;
+        @Schema(description = "Working Capital Delinquency Collection Data")
+        public WorkingCapitalCollection collectionData;
     }
 
     @Schema(description = "Working capital loan running balances")
@@ -226,6 +231,8 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public java.math.BigDecimal realizedIncome;
         @Schema(example = "0.00")
         public java.math.BigDecimal unrealizedIncome;
+        @Schema(example = "0.00")
+        public java.math.BigDecimal overpaymentAmount;
     }
 
     @Schema(description = "Single disbursement detail (expected and actual)")
@@ -314,6 +321,8 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public BigDecimal discount;
         @Schema(example = "1")
         public Long breachId;
+        @Schema(example = "1")
+        public Long nearBreachId;
         @Schema(example = "1")
         public Long delinquencyBucketId;
         @Schema(example = "3")
@@ -420,6 +429,8 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         @Schema(example = "1")
         public Long breachId;
         @Schema(example = "1")
+        public Long nearBreachId;
+        @Schema(example = "1")
         public Long delinquencyBucketId;
         @Schema(example = "3")
         public Integer delinquencyGraceDays;
@@ -495,9 +506,107 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public String actualDisbursementDate;
         @Schema(example = "1000", description = "Disbursement amount; required for disburse. Cannot exceed approved principal.")
         public BigDecimal transactionAmount;
+        @Schema(example = "1", description = "Optional disbursement transaction classification: id of a code value under system code working_capital_loan_disbursement_classification")
+        public Long classificationId;
         @Schema(example = "ext-disburse-001", description = "External ID; optional for disburse")
         public String externalId;
         @Schema(description = "Payment details (Account No, Cheque No, Routing Code, Receipt No, Bank code)")
         public PostWorkingCapitalLoansLoanIdDisbursementPaymentDetails paymentDetails;
     }
+
+    @Schema(description = "Request for updating discount on a disbursed Working Capital Loan")
+    public static final class PutWorkingCapitalLoansLoanIdDiscountRequest {
+
+        private PutWorkingCapitalLoansLoanIdDiscountRequest() {}
+
+        @Schema(example = "0.0", description = "Discount amount")
+        public BigDecimal discountAmount;
+
+        @Schema(example = "Discount update Note")
+        public String note;
+
+        @Schema(example = "en_GB")
+        public String locale;
+
+        @Schema(example = "dd MMMM yyyy")
+        public String dateFormat;
+    }
+
+    @Schema(description = "Working Capital Delinquency Collection Data")
+    public static final class WorkingCapitalCollection {
+
+        private WorkingCapitalCollection() {}
+
+        @Schema(description = "Working capital loan delinquency collection summary", example = "true")
+        public Long delinquentDays;
+        @Schema(description = "Date when the loan became delinquent", example = "[2024, 1, 15]")
+        public LocalDate delinquentDate;
+        @Schema(description = "Total delinquent amount", example = "1234.56")
+        public BigDecimal delinquentAmount;
+        @Schema(description = "Pause periods during which delinquency is not counted")
+        public Collection<WorkingCapitalCollectionDelinquencyPausePeriod> delinquencyPausePeriods;
+        @Schema(description = "Delinquency amounts grouped by age range")
+        public Collection<WorkingCapitalCollectionRangeScheduleDelinquency> rangeLevelDelinquency;
+        @Schema(description = "Delinquent principal amount", example = "1000.00")
+        public BigDecimal delinquentPrincipal;
+        @Schema(description = "Delinquent fee amount", example = "150.00")
+        public BigDecimal delinquentFee;
+        @Schema(description = "Delinquent penalty amount", example = "84.56")
+        public BigDecimal delinquentPenalty;
+
+        @Schema(description = "Delinquency amount for a specific age range")
+        public static final class WorkingCapitalCollectionRangeScheduleDelinquency {
+
+            private WorkingCapitalCollectionRangeScheduleDelinquency() {}
+
+            @Schema(description = "Delinquency range id", example = "1")
+            public Long rangeId;
+            @Schema(description = "Classification for the delinquency range", example = "Current")
+            public String classification;
+            @Schema(description = "Minimum age in days for the range", example = "1")
+            public Integer minimumAgeDays;
+            @Schema(description = "Maximum age in days for the range", example = "30")
+            public Integer maximumAgeDays;
+            @Schema(description = "Delinquent amount for this range", example = "123.45")
+            public BigDecimal delinquentAmount;
+        }
+
+        @Schema(description = "Pause period during which delinquency tracking is paused")
+        public static final class WorkingCapitalCollectionDelinquencyPausePeriod {
+
+            private WorkingCapitalCollectionDelinquencyPausePeriod() {}
+
+            @Schema(description = "Whether the pause period is active", example = "true")
+            public boolean active;
+            @Schema(description = "Pause period start date", example = "[2024, 1, 1]")
+            public LocalDate pausePeriodStart;
+            @Schema(description = "Pause period end date", example = "[2024, 1, 31]")
+            public LocalDate pausePeriodEnd;
+        }
+    }
+
+    @Schema(description = "GetWorkingCapitalLoanDelinquencyTagHistoryResponse")
+    public static final class GetWorkingCapitalLoanDelinquencyRangeScheduleTagHistoryResponse {
+
+        private GetWorkingCapitalLoanDelinquencyRangeScheduleTagHistoryResponse() {}
+
+        @Schema(example = "1")
+        public Long id;
+        @Schema(example = "10")
+        public Long loanId;
+        public DelinquencyRangeData delinquencyRange;
+        @Schema(example = "2013,1,2")
+        public LocalDate addedOnDate;
+        @Schema(example = "2013,2,20")
+        public LocalDate liftedOnDate;
+        @Schema(example = "10")
+        public Long delinquentDays;
+        @Schema(example = "1")
+        public Long rangeId;
+        @Schema(example = "2")
+        public Integer periodNumber;
+        @Schema(example = "123.45")
+        public BigDecimal delinquentAmount;
+    }
+
 }

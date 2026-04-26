@@ -18,9 +18,11 @@
  */
 package org.apache.fineract.integrationtests;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.Gson;
@@ -41,13 +43,15 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.fineract.client.feign.util.CallFailedRuntimeException;
 import org.apache.fineract.integrationtests.common.ClientHelper;
 import org.apache.fineract.integrationtests.common.Utils;
 import org.apache.fineract.integrationtests.common.funds.FundsResourceHandler;
 import org.apache.fineract.integrationtests.common.products.DelinquencyBucketsHelper;
-import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanApplicationHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanApplicationTestBuilder;
+import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloanbreach.WorkingCapitalBreachHelper;
+import org.apache.fineract.integrationtests.common.workingcapitalloannearbreach.WorkingCapitalNearBreachHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloanproduct.WorkingCapitalLoanProductHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloanproduct.WorkingCapitalLoanProductTestBuilder;
 import org.junit.jupiter.api.BeforeAll;
@@ -60,9 +64,10 @@ public class WorkingCapitalLoanApplicationCRUDTest {
     private static Long delinquencyBucketId;
     private static Long fundId;
 
-    private final WorkingCapitalLoanApplicationHelper applicationHelper = new WorkingCapitalLoanApplicationHelper();
+    private final WorkingCapitalLoanHelper applicationHelper = new WorkingCapitalLoanHelper();
     private final WorkingCapitalLoanProductHelper productHelper = new WorkingCapitalLoanProductHelper();
     private final WorkingCapitalBreachHelper breachHelper = new WorkingCapitalBreachHelper();
+    private final WorkingCapitalNearBreachHelper nearBreachHelper = new WorkingCapitalNearBreachHelper();
 
     @BeforeAll
     static void initDelinquency() {
@@ -71,7 +76,7 @@ public class WorkingCapitalLoanApplicationCRUDTest {
         requestSpec.header("Authorization", "Basic " + Utils.loginIntoServerAndGetBase64EncodedAuthenticationKey());
         requestSpec.header("Fineract-Platform-TenantId", "default");
         responseSpec = new ResponseSpecBuilder().expectStatusCode(200).build();
-        delinquencyBucketId = (long) DelinquencyBucketsHelper.createDefaultBucket();
+        delinquencyBucketId = DelinquencyBucketsHelper.createDefaultBucket();
         fundId = (long) FundsResourceHandler.createFund(requestSpec, responseSpec);
     }
 
@@ -143,13 +148,17 @@ public class WorkingCapitalLoanApplicationCRUDTest {
     }
 
     @Test
-    public void testSubmitWithoutBreachParamsUsesProductBreachDefaults() {
+    public void testSubmitWithoutBreachAndNearBreachParamsUsesProductBreachDefaults() {
+        final String breachName = Utils.randomStringGenerator("Breach", 20);
         final Integer breachFrequency = 30;
         final String breachFrequencyType = "DAYS";
         final String breachAmountCalculationType = "PERCENTAGE";
         final BigDecimal breachAmount = BigDecimal.valueOf(10);
-        final Long breachId = createBreach(breachFrequency, breachFrequencyType, breachAmountCalculationType, breachAmount);
-        final Long productId = createProductWithBreach(breachId);
+        final Long breachId = createBreach(breachName, breachFrequency, breachFrequencyType, breachAmountCalculationType, breachAmount);
+        final String nearBreachName = Utils.randomStringGenerator("NearBreach", 20);
+        final Long nearBreachId = nearBreachHelper.create(
+                nearBreachHelper.nearBreachJson(nearBreachName, (breachFrequency - 10), breachFrequencyType, BigDecimal.valueOf(30.0)));
+        final Long productId = createProductWithBreachAndNearBreach(breachId, nearBreachId, Boolean.FALSE);
         final Long clientId = createClient();
 
         final String json = new WorkingCapitalLoanApplicationTestBuilder() //
@@ -164,14 +173,67 @@ public class WorkingCapitalLoanApplicationCRUDTest {
         final JsonObject data = new Gson().fromJson(applicationHelper.retrieveById(loanId), JsonObject.class);
 
         final JsonObject breach = data.getAsJsonObject("breach");
+        assertEquals(breachName, breach.get("name").getAsString());
         assertEquals(breachFrequency.intValue(), breach.get("breachFrequency").getAsInt());
         assertRepaymentFrequencyTypeEquals(breachFrequencyType, breach.get("breachFrequencyType"));
         assertRepaymentFrequencyTypeEquals(breachAmountCalculationType, breach.get("breachAmountCalculationType"));
         assertEqualBigDecimal(breachAmount, breach.get("breachAmount"));
+        final JsonObject nearBreach = data.getAsJsonObject("nearBreach");
+        assertEquals(nearBreachName, nearBreach.get("name").getAsString());
 
         applicationHelper.deleteById(loanId);
         productHelper.deleteWorkingCapitalLoanProductById(productId);
         breachHelper.delete(breachId);
+        nearBreachHelper.delete(nearBreachId);
+    }
+
+    @Test
+    public void testNegativeSubmitWithBreachAndNearBreachParams() {
+        final String breachName = Utils.randomStringGenerator("Breach", 20);
+        final Integer breachFrequency = 30;
+        final String breachFrequencyType = "DAYS";
+        final String breachAmountCalculationType = "PERCENTAGE";
+        final BigDecimal breachAmount = BigDecimal.valueOf(10);
+        final Long breachId = createBreach(breachName, breachFrequency, breachFrequencyType, breachAmountCalculationType, breachAmount);
+        final Long productId = createProductWithBreachAndNearBreach(breachId, null, Boolean.TRUE);
+        final Long clientId = createClient();
+        final String nearBreachName = Utils.randomStringGenerator("NearBreach", 20);
+        final Long nearBreachId = nearBreachHelper.create(
+                nearBreachHelper.nearBreachJson(nearBreachName, (breachFrequency + 10), breachFrequencyType, BigDecimal.valueOf(30.0)));
+
+        final String json1 = new WorkingCapitalLoanApplicationTestBuilder() //
+                .withClientId(clientId) //
+                .withProductId(productId) //
+                .withPrincipal(BigDecimal.valueOf(5000)) //
+                .withPeriodPaymentRate(BigDecimal.ONE) //
+                .withTotalPayment(BigDecimal.valueOf(5500)) //
+                .withBreachId(null) //
+                .withNearBreachId(nearBreachId) //
+                .buildSubmitJson();
+        CallFailedRuntimeException exception = assertThrows(CallFailedRuntimeException.class, () -> applicationHelper.submit(json1));
+
+        // Then
+        assertThat(exception.getStatus()).isEqualTo(400);
+        assertThat(exception.getDeveloperMessage()).contains("cannot.enable.near.breach.without.breach");
+
+        final String json2 = new WorkingCapitalLoanApplicationTestBuilder() //
+                .withClientId(clientId) //
+                .withProductId(productId) //
+                .withPrincipal(BigDecimal.valueOf(5000)) //
+                .withPeriodPaymentRate(BigDecimal.ONE) //
+                .withTotalPayment(BigDecimal.valueOf(5500)) //
+                .withBreachId(breachId) //
+                .withNearBreachId(nearBreachId) //
+                .buildSubmitJson();
+        exception = assertThrows(CallFailedRuntimeException.class, () -> applicationHelper.submit(json2));
+
+        // Then
+        assertThat(exception.getStatus()).isEqualTo(400);
+        assertThat(exception.getDeveloperMessage()).contains("near.breach.frequency.must.be.lower.than.breach.frequency");
+
+        productHelper.deleteWorkingCapitalLoanProductById(productId);
+        breachHelper.delete(breachId);
+        nearBreachHelper.delete(nearBreachId);
     }
 
     @Test
@@ -417,7 +479,7 @@ public class WorkingCapitalLoanApplicationCRUDTest {
     @Test
     public void testRetrieveTemplateWithProductId() {
         final String productName = "WCL Template Product " + UUID.randomUUID().toString().substring(0, 8);
-        final String shortName = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+        final String shortName = Utils.uniqueRandomStringGenerator("", 4);
         final Long productId = productHelper.createWorkingCapitalLoanProduct(
                 new WorkingCapitalLoanProductTestBuilder().withName(productName).withShortName(shortName).build()).getResourceId();
         assertNotNull(productId);
@@ -473,7 +535,7 @@ public class WorkingCapitalLoanApplicationCRUDTest {
     @Test
     public void testRetrieveTemplateProductOptionsContainAllowAttributeOverrides() {
         final String productName = "WCL Template Product Overrides " + UUID.randomUUID().toString().substring(0, 8);
-        final String shortName = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+        final String shortName = Utils.uniqueRandomStringGenerator("", 4);
 
         final Map<String, Boolean> allowOverrides = Map.of(//
                 "periodPaymentFrequency", Boolean.TRUE, //
@@ -904,7 +966,7 @@ public class WorkingCapitalLoanApplicationCRUDTest {
 
     private Long createProduct() {
         final String uniqueName = "WCL Product " + UUID.randomUUID().toString().substring(0, 8);
-        final String uniqueShortName = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+        final String uniqueShortName = Utils.uniqueRandomStringGenerator("", 4);
         return productHelper
                 .createWorkingCapitalLoanProduct(
                         new WorkingCapitalLoanProductTestBuilder().withName(uniqueName).withShortName(uniqueShortName).build())
@@ -913,7 +975,7 @@ public class WorkingCapitalLoanApplicationCRUDTest {
 
     private Long createProductWithAllOverridables() {
         final String uniqueName = "WCL Product " + UUID.randomUUID().toString().substring(0, 8);
-        final String uniqueShortName = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+        final String uniqueShortName = Utils.uniqueRandomStringGenerator("", 4);
         return productHelper.createWorkingCapitalLoanProduct(new WorkingCapitalLoanProductTestBuilder() //
                 .withName(uniqueName) //
                 .withShortName(uniqueShortName) //
@@ -940,7 +1002,7 @@ public class WorkingCapitalLoanApplicationCRUDTest {
     private Long createProductWithKnownDefaults(final Integer repaymentEvery, final String repaymentFrequencyType,
             final BigDecimal discount) {
         final String uniqueName = "WCL Product " + UUID.randomUUID().toString().substring(0, 8);
-        final String uniqueShortName = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+        final String uniqueShortName = Utils.uniqueRandomStringGenerator("", 4);
         return productHelper.createWorkingCapitalLoanProduct(new WorkingCapitalLoanProductTestBuilder() //
                 .withName(uniqueName) //
                 .withShortName(uniqueShortName) //
@@ -963,9 +1025,9 @@ public class WorkingCapitalLoanApplicationCRUDTest {
                 .getResourceId();
     }
 
-    private Long createProductWithBreach(final Long breachId) {
+    private Long createProductWithBreachAndNearBreach(final Long breachId, final Long nearBreachId, final boolean allowOverrideBreach) {
         final String uniqueName = "WCL Product " + UUID.randomUUID().toString().substring(0, 8);
-        final String uniqueShortName = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+        final String uniqueShortName = Utils.uniqueRandomStringGenerator("", 4);
         return productHelper.createWorkingCapitalLoanProduct(new WorkingCapitalLoanProductTestBuilder() //
                 .withName(uniqueName) //
                 .withShortName(uniqueShortName) //
@@ -974,13 +1036,16 @@ public class WorkingCapitalLoanApplicationCRUDTest {
                 .withRepaymentEvery(1) //
                 .withRepaymentFrequencyType("MONTHS") //
                 .withBreachId(breachId) //
+                .withNearBreachId(nearBreachId) //
+                .withAllowAttributeOverrides(Map.of("breach", allowOverrideBreach)) //
                 .build()) //
                 .getResourceId();
     }
 
-    private Long createBreach(final Integer breachFrequency, final String breachFrequencyType, final String breachAmountCalculationType,
-            final BigDecimal breachAmount) {
+    private Long createBreach(final String name, final Integer breachFrequency, final String breachFrequencyType,
+            final String breachAmountCalculationType, final BigDecimal breachAmount) {
         final JsonObject payload = new JsonObject();
+        payload.addProperty("name", name);
         payload.addProperty("breachFrequency", breachFrequency);
         payload.addProperty("breachFrequencyType", breachFrequencyType);
         payload.addProperty("breachAmountCalculationType", breachAmountCalculationType);

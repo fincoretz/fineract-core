@@ -20,6 +20,7 @@ package org.apache.fineract.integrationtests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -38,8 +39,8 @@ import org.apache.fineract.integrationtests.common.ClientHelper;
 import org.apache.fineract.integrationtests.common.Utils;
 import org.apache.fineract.integrationtests.common.funds.FundsResourceHandler;
 import org.apache.fineract.integrationtests.common.products.DelinquencyBucketsHelper;
-import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanApplicationHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanApplicationTestBuilder;
+import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloanproduct.WorkingCapitalLoanProductHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloanproduct.WorkingCapitalLoanProductTestBuilder;
 import org.junit.jupiter.api.BeforeAll;
@@ -52,7 +53,7 @@ public class WorkingCapitalLoanApprovalRejectionTest {
     private static Long delinquencyBucketId;
     private static Long fundId;
 
-    private final WorkingCapitalLoanApplicationHelper applicationHelper = new WorkingCapitalLoanApplicationHelper();
+    private final WorkingCapitalLoanHelper applicationHelper = new WorkingCapitalLoanHelper();
     private final WorkingCapitalLoanProductHelper productHelper = new WorkingCapitalLoanProductHelper();
 
     @BeforeAll
@@ -360,6 +361,24 @@ public class WorkingCapitalLoanApprovalRejectionTest {
         productHelper.deleteWorkingCapitalLoanProductById(productId);
     }
 
+    @Test
+    public void testApproveWithDiscountFailsWhenProductDisallowsDiscountOverride() {
+        final Long productId = createProduct();
+        final Long clientId = createClient();
+
+        final Long loanId = submitLoan(clientId, productId);
+
+        final CallFailedRuntimeException ex = applicationHelper.runApproveExpectingFailure(loanId, WorkingCapitalLoanApplicationTestBuilder
+                .buildApproveJson(getSubmittedOnDate(loanId), BigDecimal.valueOf(5000), BigDecimal.valueOf(10)));
+        assertNotNull(ex);
+        assertEquals(400, ex.getStatus());
+        assertNotNull(ex.getDeveloperMessage());
+        assertTrue(ex.getDeveloperMessage().contains("override.not.allowed.by.product"));
+
+        applicationHelper.deleteById(loanId);
+        productHelper.deleteWorkingCapitalLoanProductById(productId);
+    }
+
     // ========== External-ID endpoint tests ==========
 
     @Test
@@ -449,7 +468,7 @@ public class WorkingCapitalLoanApprovalRejectionTest {
 
     private Long createProduct() {
         final String uniqueName = "WCL Product " + UUID.randomUUID().toString().substring(0, 8);
-        final String uniqueShortName = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+        final String uniqueShortName = Utils.uniqueRandomStringGenerator("", 4);
         return productHelper
                 .createWorkingCapitalLoanProduct(
                         new WorkingCapitalLoanProductTestBuilder().withName(uniqueName).withShortName(uniqueShortName).build())
@@ -458,7 +477,7 @@ public class WorkingCapitalLoanApprovalRejectionTest {
 
     private Long createProductWithDiscountOverride() {
         final String uniqueName = "WCL Product " + UUID.randomUUID().toString().substring(0, 8);
-        final String uniqueShortName = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+        final String uniqueShortName = Utils.uniqueRandomStringGenerator("", 4);
         return productHelper.createWorkingCapitalLoanProduct(new WorkingCapitalLoanProductTestBuilder() //
                 .withName(uniqueName) //
                 .withShortName(uniqueShortName) //

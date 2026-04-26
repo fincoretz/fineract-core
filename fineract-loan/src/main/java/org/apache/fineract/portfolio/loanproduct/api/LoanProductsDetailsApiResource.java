@@ -20,7 +20,6 @@ package org.apache.fineract.portfolio.loanproduct.api;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -48,9 +47,8 @@ public class LoanProductsDetailsApiResource {
 
     @GET
     @Path("basic-details")
-    @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "List Loan Products with basic details", description = "Lists Loan Products with basic details to be listed")
+    @Operation(summary = "List Loan Products with basic details", operationId = "retrieveAllLoanProductsDetails", description = "Lists Loan Products with basic details to be listed")
     public Collection<LoanProductBasicDetailsData> fetchProducts(@Context final UriInfo uriInfo) {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
 

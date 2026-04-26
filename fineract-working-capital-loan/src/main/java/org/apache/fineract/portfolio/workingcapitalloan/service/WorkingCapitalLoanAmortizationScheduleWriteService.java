@@ -21,6 +21,7 @@ package org.apache.fineract.portfolio.workingcapitalloan.service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.apache.fineract.portfolio.workingcapitalloan.data.ProjectedAmortizationScheduleGenerateRequest;
+import org.apache.fineract.portfolio.workingcapitalloan.data.RepaymentAmortizationData;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
 
 public interface WorkingCapitalLoanAmortizationScheduleWriteService {
@@ -29,5 +30,9 @@ public interface WorkingCapitalLoanAmortizationScheduleWriteService {
 
     void generateAndSaveAmortizationScheduleOnDisbursement(WorkingCapitalLoan loan, BigDecimal disbursedAmount, LocalDate disbursementDate);
 
+    void generateAndSaveAmortizationScheduleOnApproval(WorkingCapitalLoan loan);
+
     void regenerateAmortizationScheduleOnUndoDisbursal(WorkingCapitalLoan loan);
+
+    RepaymentAmortizationData applyRepayment(WorkingCapitalLoan loan, LocalDate transactionDate, BigDecimal repaymentAmount);
 }

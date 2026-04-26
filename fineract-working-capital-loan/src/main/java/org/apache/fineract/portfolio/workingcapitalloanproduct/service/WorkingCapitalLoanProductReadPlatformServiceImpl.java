@@ -20,7 +20,10 @@ package org.apache.fineract.portfolio.workingcapitalloanproduct.service;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.apache.fineract.accounting.common.AccountingDropdownReadPlatformService;
+import org.apache.fineract.accounting.glaccount.data.GLAccountData;
 import org.apache.fineract.infrastructure.core.api.ApiFacingEnum;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.data.StringEnumOptionData;
@@ -28,6 +31,7 @@ import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.monetary.service.CurrencyReadPlatformService;
 import org.apache.fineract.portfolio.delinquency.data.DelinquencyBucketData;
+import org.apache.fineract.portfolio.delinquency.domain.DelinquencyMinimumPaymentType;
 import org.apache.fineract.portfolio.delinquency.service.DelinquencyReadPlatformService;
 import org.apache.fineract.portfolio.fund.data.FundData;
 import org.apache.fineract.portfolio.fund.service.FundReadPlatformService;
@@ -35,7 +39,10 @@ import org.apache.fineract.portfolio.loanproduct.domain.PaymentAllocationTransac
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanPeriodFrequencyType;
 import org.apache.fineract.portfolio.workingcapitalloanbreach.data.WorkingCapitalBreachData;
 import org.apache.fineract.portfolio.workingcapitalloanbreach.service.WorkingCapitalBreachReadPlatformService;
+import org.apache.fineract.portfolio.workingcapitalloannearbreach.data.WorkingCapitalNearBreachData;
+import org.apache.fineract.portfolio.workingcapitalloannearbreach.service.WorkingCapitalNearBreachReadPlatformService;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.data.WorkingCapitalLoanProductData;
+import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAccountingRuleType;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAmortizationType;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanDelinquencyStartType;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanProduct;
@@ -57,6 +64,9 @@ public class WorkingCapitalLoanProductReadPlatformServiceImpl implements Working
     private final CurrencyReadPlatformService currencyReadPlatformService;
     private final DelinquencyReadPlatformService delinquencyReadPlatformService;
     private final WorkingCapitalBreachReadPlatformService breachReadPlatformService;
+    private final AccountingDropdownReadPlatformService accountingDropdownReadPlatformService;
+    private final WorkingCapitalProductAccountingMappingService wcAccountingMappingService;
+    private final WorkingCapitalNearBreachReadPlatformService nearBreachReadPlatformService;
 
     @Override
     public List<WorkingCapitalLoanProductData> retrieveAllWorkingCapitalLoanProducts() {
@@ -68,7 +78,15 @@ public class WorkingCapitalLoanProductReadPlatformServiceImpl implements Working
     public WorkingCapitalLoanProductData retrieveWorkingCapitalLoanProduct(final Long productId) {
         final WorkingCapitalLoanProduct product = this.repository.findByIdWithDetails(productId)
                 .orElseThrow(() -> new WorkingCapitalLoanProductNotFoundException(productId));
-        return this.mapper.toData(product);
+        final WorkingCapitalLoanProductData productData = this.mapper.toData(product);
+
+        if (product.getAccountingRule().isCashBased()) {
+            final Map<String, GLAccountData> accountingMappings = this.wcAccountingMappingService.fetchAccountMappingDetails(productId,
+                    product.getAccountingRule());
+            productData.setAccountingMappings(accountingMappings);
+        }
+
+        return productData;
     }
 
     @Override
@@ -90,10 +108,17 @@ public class WorkingCapitalLoanProductReadPlatformServiceImpl implements Working
                 .getValuesAsStringEnumOptionDataList(WorkingCapitalPaymentAllocationType.class);
         final List<StringEnumOptionData> delinquencyStartTypeOptions = ApiFacingEnum
                 .getValuesAsStringEnumOptionDataList(WorkingCapitalLoanDelinquencyStartType.class);
+        final List<StringEnumOptionData> delinquencyMinimumPaymentTypeOptions = ApiFacingEnum
+                .getValuesAsStringEnumOptionDataList(DelinquencyMinimumPaymentType.class);
         final List<EnumOptionData> advancedPaymentAllocationTransactionTypes = PaymentAllocationTransactionType
                 .getValuesAsEnumOptionDataList();
         final Collection<DelinquencyBucketData> delinquencyBucketOptions = this.delinquencyReadPlatformService
                 .retrieveAllDelinquencyBuckets();
+        final List<WorkingCapitalNearBreachData> nearBreachOptions = nearBreachReadPlatformService.retrieveAll();
+
+        final List<StringEnumOptionData> accountingRuleOptions = WorkingCapitalAccountingRuleType.toStringEnumOptions();
+        final Map<String, List<GLAccountData>> accountingMappingOptions = this.accountingDropdownReadPlatformService
+                .retrieveAccountMappingOptionsForLoanProducts();
 
         return WorkingCapitalLoanProductData.builder() //
                 .fundOptions(fundOptions) //
@@ -104,8 +129,12 @@ public class WorkingCapitalLoanProductReadPlatformServiceImpl implements Working
                 .advancedPaymentAllocationTypes(advancedPaymentAllocationTypes) //
                 .advancedPaymentAllocationTransactionTypes(advancedPaymentAllocationTransactionTypes) //
                 .delinquencyStartTypeOptions(delinquencyStartTypeOptions) //
+                .delinquencyMinimumPaymentTypeOptions(delinquencyMinimumPaymentTypeOptions) //
                 .delinquencyBucketOptions(
                         delinquencyBucketOptions != null && !delinquencyBucketOptions.isEmpty() ? delinquencyBucketOptions : null) //
+                .accountingRuleOptions(accountingRuleOptions) //
+                .accountingMappingOptions(accountingMappingOptions) //
+                .nearBreachOptions(nearBreachOptions) //
                 .build();
     }
 }

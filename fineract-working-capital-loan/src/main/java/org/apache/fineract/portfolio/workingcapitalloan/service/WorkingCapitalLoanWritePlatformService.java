@@ -32,4 +32,10 @@ public interface WorkingCapitalLoanWritePlatformService {
     CommandProcessingResult disburseLoan(Long loanId, JsonCommand command);
 
     CommandProcessingResult undoDisbursal(Long loanId, JsonCommand command);
+
+    CommandProcessingResult updateDiscount(Long loanId, JsonCommand command);
+
+    CommandProcessingResult makeRepayment(Long loanId, JsonCommand command);
+
+    CommandProcessingResult creditBalanceRefund(Long loanId, JsonCommand command);
 }

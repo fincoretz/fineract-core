@@ -43,10 +43,10 @@ import org.apache.fineract.integrationtests.common.FineractFeignClientHelper;
 import org.apache.fineract.integrationtests.common.Utils;
 import org.apache.fineract.integrationtests.common.loans.LoanTestLifecycleExtension;
 import org.apache.fineract.integrationtests.common.products.DelinquencyRangesHelper;
-import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanApplicationHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanApplicationTestBuilder;
 import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanDelinquencyRangeScheduleHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanDisbursementTestBuilder;
+import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloanproduct.WorkingCapitalLoanProductHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloanproduct.WorkingCapitalLoanProductTestBuilder;
 import org.junit.jupiter.api.Test;
@@ -117,14 +117,14 @@ public class WorkingCapitalLoanDelinquencyRangeScheduleIntegrationTest {
         // Create a WC product linked to this delinquency bucket
         final WorkingCapitalLoanProductHelper productHelper = new WorkingCapitalLoanProductHelper();
         final String uniqueName = "WCL Product " + UUID.randomUUID().toString().substring(0, 8);
-        final String uniqueShortName = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+        final String uniqueShortName = Utils.uniqueRandomStringGenerator("", 4);
         final Long productId = productHelper.createWorkingCapitalLoanProduct(new WorkingCapitalLoanProductTestBuilder().withName(uniqueName)
                 .withShortName(uniqueShortName).withDelinquencyBucketId(bucketResponse.getResourceId()).build()).getResourceId();
         assertNotNull(productId);
 
         // Create a client and submit a WC loan
         final Long clientId = ClientHelper.createClient(ClientHelper.defaultClientCreationRequest()).getClientId();
-        final WorkingCapitalLoanApplicationHelper applicationHelper = new WorkingCapitalLoanApplicationHelper();
+        final WorkingCapitalLoanHelper applicationHelper = new WorkingCapitalLoanHelper();
         final Long loanId = applicationHelper.submit(new WorkingCapitalLoanApplicationTestBuilder() //
                 .withClientId(clientId) //
                 .withProductId(productId) //
@@ -162,7 +162,7 @@ public class WorkingCapitalLoanDelinquencyRangeScheduleIntegrationTest {
             // Create product with discount allowed and linked to delinquency bucket
             final WorkingCapitalLoanProductHelper productHelper = new WorkingCapitalLoanProductHelper();
             final String uniqueName = "WCL Product " + UUID.randomUUID().toString().substring(0, 8);
-            final String uniqueShortName = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+            final String uniqueShortName = Utils.uniqueRandomStringGenerator("", 4);
             final Long productId = productHelper
                     .createWorkingCapitalLoanProduct(new WorkingCapitalLoanProductTestBuilder().withName(uniqueName)
                             .withShortName(uniqueShortName).withDiscount(discount).withDelinquencyBucketId(bucketResponse.getResourceId())
@@ -171,7 +171,7 @@ public class WorkingCapitalLoanDelinquencyRangeScheduleIntegrationTest {
 
             // Create client and submit WC loan
             final Long clientId = ClientHelper.createClient(ClientHelper.defaultClientCreationRequest()).getClientId();
-            final WorkingCapitalLoanApplicationHelper applicationHelper = new WorkingCapitalLoanApplicationHelper();
+            final WorkingCapitalLoanHelper applicationHelper = new WorkingCapitalLoanHelper();
             final Long loanId = applicationHelper.submit(new WorkingCapitalLoanApplicationTestBuilder() //
                     .withClientId(clientId) //
                     .withProductId(productId) //

@@ -36,28 +36,50 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.apache.fineract.client.feign.util.CallFailedRuntimeException;
+import org.apache.fineract.client.models.GetCodesResponse;
+import org.apache.fineract.client.models.PostCodeValueDataResponse;
+import org.apache.fineract.client.models.PostCodeValuesDataRequest;
+import org.apache.fineract.client.models.PutGlobalConfigurationsRequest;
+import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
+import org.apache.fineract.infrastructure.event.external.data.ExternalEventResponse;
+import org.apache.fineract.integrationtests.client.feign.helpers.FeignExternalEventHelper;
+import org.apache.fineract.integrationtests.common.BusinessDateHelper;
 import org.apache.fineract.integrationtests.common.ClientHelper;
-import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanApplicationHelper;
+import org.apache.fineract.integrationtests.common.FineractFeignClientHelper;
+import org.apache.fineract.integrationtests.common.GlobalConfigurationHelper;
+import org.apache.fineract.integrationtests.common.Utils;
+import org.apache.fineract.integrationtests.common.system.CodeHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanApplicationTestBuilder;
 import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanDisbursementTestBuilder;
+import org.apache.fineract.integrationtests.common.workingcapitalloan.WorkingCapitalLoanHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloanproduct.WorkingCapitalLoanProductHelper;
 import org.apache.fineract.integrationtests.common.workingcapitalloanproduct.WorkingCapitalLoanProductTestBuilder;
+import org.apache.fineract.portfolio.workingcapitalloan.WorkingCapitalLoanConstants;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 public class WorkingCapitalLoanDisbursementTest {
 
-    private final WorkingCapitalLoanApplicationHelper applicationHelper = new WorkingCapitalLoanApplicationHelper();
+    private final WorkingCapitalLoanHelper applicationHelper = new WorkingCapitalLoanHelper();
     private final WorkingCapitalLoanProductHelper productHelper = new WorkingCapitalLoanProductHelper();
+    private final CodeHelper codeHelper = new CodeHelper();
+    private final GlobalConfigurationHelper globalConfigurationHelper = new GlobalConfigurationHelper();
+    private final FeignExternalEventHelper externalEventHelper = new FeignExternalEventHelper(
+            FineractFeignClientHelper.getFineractFeignClient());
 
     private final List<Long> createdLoanIds = new ArrayList<>();
     private final List<Long> createdProductIds = new ArrayList<>();
     private final Long createdClientId = createClient();
 
     private static final String CLEANUP_EMPTY_COMMAND_JSON = "{\"locale\":\"en\",\"dateFormat\":\"yyyy-MM-dd\"}";
+    private static final String WC_DISBURSAL_TXN_EVENT = "WorkingCapitalLoanDisbursalTransactionBusinessEvent";
+    private static final String WC_UNDO_DISBURSAL_TXN_EVENT = "WorkingCapitalLoanUndoDisbursalTransactionBusinessEvent";
 
     @AfterEach
     void cleanupEntities() {
+        globalConfigurationHelper.updateGlobalConfiguration(GlobalConfigurationConstants.ENABLE_BUSINESS_DATE,
+                new PutGlobalConfigurationsRequest().enabled(false));
+
         // Loans: undo disbursal -> undo approval -> delete
         for (final Long loanId : createdLoanIds) {
             if (loanId == null) {
@@ -148,6 +170,96 @@ public class WorkingCapitalLoanDisbursementTest {
     }
 
     @Test
+    public void testDisburseWithClassificationIdStoredOnTransaction() {
+        final GetCodesResponse code = codeHelper.retrieveCodeByName(WorkingCapitalLoanConstants.DISBURSEMENT_CLASSIFICATION_CODE_NAME);
+        final PostCodeValueDataResponse classificationCode = codeHelper.createCodeValue(code.getId(),
+                new PostCodeValuesDataRequest().name(Utils.uniqueRandomStringGenerator("WCL_CLS_", 8)).isActive(true).position(0));
+        final Long classificationId = classificationCode.getSubResourceId();
+
+        final Long productId = createProduct();
+        final Long loanId = submitAndTrack(new WorkingCapitalLoanApplicationTestBuilder() //
+                .withClientId(createdClientId) //
+                .withProductId(productId) //
+                .withPrincipal(BigDecimal.valueOf(5000)) //
+                .withPeriodPaymentRate(BigDecimal.ONE) //
+                .buildSubmitJson());
+
+        final LocalDate approvedOnDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.approveById(loanId,
+                WorkingCapitalLoanApplicationTestBuilder.buildApproveJson(approvedOnDate, BigDecimal.valueOf(5000), null));
+
+        final LocalDate actualDisbursementDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.disburseById(loanId, WorkingCapitalLoanDisbursementTestBuilder.buildDisburseJson(actualDisbursementDate,
+                BigDecimal.valueOf(5000), classificationId));
+
+        final String response = applicationHelper.retrieveById(loanId);
+        final JsonObject data = JsonParser.parseString(response).getAsJsonObject();
+        assertTrue(data.has("transactions") && data.get("transactions").isJsonArray());
+        final JsonObject txn = data.getAsJsonArray("transactions").get(0).getAsJsonObject();
+        assertTrue(txn.has("classification") && !txn.get("classification").isJsonNull(),
+                "Disbursement transaction should include classification");
+        final JsonObject classification = txn.getAsJsonObject("classification");
+        assert classificationId != null;
+        assertEquals(classificationId.longValue(), classification.get("id").getAsLong());
+
+        final long transactionId = txn.get("id").getAsLong();
+        final String txnByIdJson = applicationHelper.retrieveTransactionByLoanIdAndTransactionIdRaw(loanId, transactionId);
+        final JsonObject txnById = JsonParser.parseString(txnByIdJson).getAsJsonObject();
+        assertTrue(txnById.has("classification") && !txnById.get("classification").isJsonNull());
+        assertEquals(classificationId.longValue(), txnById.getAsJsonObject("classification").get("id").getAsLong());
+    }
+
+    @Test
+    public void testDisburseWithNonExistentClassificationIdFails() {
+        final Long productId = createProduct();
+        final Long loanId = submitAndTrack(new WorkingCapitalLoanApplicationTestBuilder() //
+                .withClientId(createdClientId) //
+                .withProductId(productId) //
+                .withPrincipal(BigDecimal.valueOf(5000)) //
+                .withPeriodPaymentRate(BigDecimal.ONE) //
+                .buildSubmitJson());
+
+        applicationHelper.approveById(loanId, WorkingCapitalLoanApplicationTestBuilder
+                .buildApproveJson(LocalDate.now(ZoneId.systemDefault()), BigDecimal.valueOf(5000), null));
+
+        final String disburseJson = WorkingCapitalLoanDisbursementTestBuilder.buildDisburseJson(LocalDate.now(ZoneId.systemDefault()),
+                BigDecimal.valueOf(5000), 9_999_999_999L);
+        final CallFailedRuntimeException ex = applicationHelper.runDisburseExpectingFailure(loanId, disburseJson);
+        assertEquals(400, ex.getStatus());
+        assertNotNull(ex.getDeveloperMessage());
+        final String msg = ex.getDeveloperMessage();
+        assertTrue(msg.contains("classificationId") || msg.contains("Code value") || msg.toLowerCase().contains("code value"),
+                "Expected validation message for invalid classificationId: " + msg);
+    }
+
+    @Test
+    public void testDisburseWithClassificationIdFromWrongCodeBookFails() {
+        final GetCodesResponse loanPurposeCode = codeHelper.retrieveCodeByName("LoanPurpose");
+        final PostCodeValueDataResponse wrongBookValue = codeHelper.createCodeValue(loanPurposeCode.getId(),
+                new PostCodeValuesDataRequest().name(Utils.uniqueRandomStringGenerator("WCL_WRG_", 8)).isActive(true).position(0));
+
+        final Long productId = createProduct();
+        final Long loanId = submitAndTrack(new WorkingCapitalLoanApplicationTestBuilder() //
+                .withClientId(createdClientId) //
+                .withProductId(productId) //
+                .withPrincipal(BigDecimal.valueOf(5000)) //
+                .withPeriodPaymentRate(BigDecimal.ONE) //
+                .buildSubmitJson());
+
+        applicationHelper.approveById(loanId, WorkingCapitalLoanApplicationTestBuilder
+                .buildApproveJson(LocalDate.now(ZoneId.systemDefault()), BigDecimal.valueOf(5000), null));
+
+        final String disburseJson = WorkingCapitalLoanDisbursementTestBuilder.buildDisburseJson(LocalDate.now(ZoneId.systemDefault()),
+                BigDecimal.valueOf(5000), wrongBookValue.getSubResourceId());
+        final CallFailedRuntimeException ex = applicationHelper.runDisburseExpectingFailure(loanId, disburseJson);
+        assertEquals(400, ex.getStatus());
+        assertNotNull(ex.getDeveloperMessage());
+        final String developerMessage = ex.getDeveloperMessage();
+        assertTrue(developerMessage.contains("code.value.classification.not.exists") || developerMessage.contains("classificationId"),
+                "Expected classification validation error: " + developerMessage);
+    }
+
+    @Test
     public void testDisburseWithAllRequestFieldsAndVerifyResponse() {
         final Long productId = createProductWithDiscountAllowed();
 
@@ -185,7 +297,7 @@ public class WorkingCapitalLoanDisbursementTest {
 
         assertStatus(data, "loanStatusType.active");
         assertTrue(data.has("balance") && !data.get("balance").isJsonNull(), "GET loan after disburse should include balance");
-        assertEqualBigDecimal(transactionAmount, data.getAsJsonObject("balance").get("principalOutstanding"));
+        assertEqualBigDecimal(transactionAmount.add(discountAmount), data.getAsJsonObject("balance").get("principalOutstanding"));
         assertEqualBigDecimal(discountAmount, data.get("discount"));
         assertTrue(data.has("id"));
         assertEquals(loanId.longValue(), data.get("id").getAsLong());
@@ -285,6 +397,81 @@ public class WorkingCapitalLoanDisbursementTest {
     }
 
     @Test
+    public void testDisbursementExternalBusinessEventPublished() {
+        externalEventHelper.enableBusinessEvent(WC_DISBURSAL_TXN_EVENT);
+        try {
+            final Long productId = createProduct();
+            final Long loanId = submitAndTrack(new WorkingCapitalLoanApplicationTestBuilder() //
+                    .withClientId(createdClientId) //
+                    .withProductId(productId) //
+                    .withPrincipal(BigDecimal.valueOf(5000)) //
+                    .withPeriodPaymentRate(BigDecimal.ONE) //
+                    .buildSubmitJson());
+
+            final LocalDate approvedOnDate = LocalDate.now(ZoneId.systemDefault());
+            applicationHelper.approveById(loanId,
+                    WorkingCapitalLoanApplicationTestBuilder.buildApproveJson(approvedOnDate, BigDecimal.valueOf(5000), null));
+
+            externalEventHelper.deleteAllExternalEvents();
+            applicationHelper.disburseById(loanId, WorkingCapitalLoanDisbursementTestBuilder
+                    .buildDisburseJson(LocalDate.now(ZoneId.systemDefault()), BigDecimal.valueOf(5000)));
+
+            final String loanJson = applicationHelper.retrieveById(loanId);
+            final long transactionId = JsonParser.parseString(loanJson).getAsJsonObject().getAsJsonArray("transactions").get(0)
+                    .getAsJsonObject().get("id").getAsLong();
+
+            final List<ExternalEventResponse> events = externalEventHelper.getExternalEventsByType(WC_DISBURSAL_TXN_EVENT);
+            final ExternalEventResponse event = events.stream().filter(e -> loanId.equals(e.getAggregateRootId())).findFirst().orElse(null);
+            assertNotNull(event, "Expected disbursal transaction external event for loan");
+            assertEquals(WC_DISBURSAL_TXN_EVENT, event.getType());
+            assertEquals(loanId, event.getAggregateRootId());
+            assertEquals(transactionId, ((Number) event.getPayLoad().get("id")).longValue());
+            assertEquals(loanId, ((Number) event.getPayLoad().get("wcLoanId")).longValue());
+            assertEquals(Boolean.FALSE, event.getPayLoad().get("reversed"));
+        } finally {
+            externalEventHelper.disableBusinessEvent(WC_DISBURSAL_TXN_EVENT);
+        }
+    }
+
+    @Test
+    public void testUndoDisbursementExternalBusinessEventPublished() {
+        externalEventHelper.enableBusinessEvent(WC_UNDO_DISBURSAL_TXN_EVENT);
+        try {
+            final Long productId = createProduct();
+            final Long loanId = submitAndTrack(new WorkingCapitalLoanApplicationTestBuilder() //
+                    .withClientId(createdClientId) //
+                    .withProductId(productId) //
+                    .withPrincipal(BigDecimal.valueOf(5000)) //
+                    .withPeriodPaymentRate(BigDecimal.ONE) //
+                    .buildSubmitJson());
+
+            final LocalDate approvedOnDate = LocalDate.now(ZoneId.systemDefault());
+            applicationHelper.approveById(loanId,
+                    WorkingCapitalLoanApplicationTestBuilder.buildApproveJson(approvedOnDate, BigDecimal.valueOf(5000), null));
+            applicationHelper.disburseById(loanId, WorkingCapitalLoanDisbursementTestBuilder
+                    .buildDisburseJson(LocalDate.now(ZoneId.systemDefault()), BigDecimal.valueOf(5000)));
+
+            final String loanAfterDisburse = applicationHelper.retrieveById(loanId);
+            final long transactionId = JsonParser.parseString(loanAfterDisburse).getAsJsonObject().getAsJsonArray("transactions").get(0)
+                    .getAsJsonObject().get("id").getAsLong();
+
+            externalEventHelper.deleteAllExternalEvents();
+            applicationHelper.undoDisbursalById(loanId, WorkingCapitalLoanDisbursementTestBuilder.buildUndoDisburseJson());
+
+            final List<ExternalEventResponse> events = externalEventHelper.getExternalEventsByType(WC_UNDO_DISBURSAL_TXN_EVENT);
+            final ExternalEventResponse event = events.stream().filter(e -> loanId.equals(e.getAggregateRootId())).findFirst().orElse(null);
+            assertNotNull(event, "Expected undo disbursal transaction external event for loan");
+            assertEquals(WC_UNDO_DISBURSAL_TXN_EVENT, event.getType());
+            assertEquals(loanId, event.getAggregateRootId());
+            assertEquals(transactionId, ((Number) event.getPayLoad().get("id")).longValue());
+            assertEquals(loanId, ((Number) event.getPayLoad().get("wcLoanId")).longValue());
+            assertEquals(Boolean.TRUE, event.getPayLoad().get("reversed"));
+        } finally {
+            externalEventHelper.disableBusinessEvent(WC_UNDO_DISBURSAL_TXN_EVENT);
+        }
+    }
+
+    @Test
     public void testUndoDisbursalWithNote() {
         final Long productId = createProduct();
 
@@ -307,6 +494,255 @@ public class WorkingCapitalLoanDisbursementTest {
         assertNotNull(response);
         final JsonObject data = JsonParser.parseString(response).getAsJsonObject();
         assertStatus(data, "loanStatusType.approved");
+    }
+
+    @Test
+    public void testUpdateDiscountAfterDisbursement() {
+        final Long productId = createProductWithDiscountAllowed();
+        final Long loanId = submitAndTrack(new WorkingCapitalLoanApplicationTestBuilder() //
+                .withClientId(createdClientId) //
+                .withProductId(productId) //
+                .withPrincipal(BigDecimal.valueOf(5000)) //
+                .withPeriodPaymentRate(BigDecimal.ONE) //
+                .withTotalPayment(BigDecimal.valueOf(5500)) //
+                .buildSubmitJson());
+
+        final LocalDate approvedOnDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.approveById(loanId,
+                WorkingCapitalLoanApplicationTestBuilder.buildApproveJson(approvedOnDate, BigDecimal.valueOf(5000), null));
+        final LocalDate disbursementDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.disburseById(loanId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildDisburseJson(disbursementDate, BigDecimal.valueOf(5000)));
+
+        final String businessDate = disbursementDate.format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+        BusinessDateHelper.runAt(businessDate, () -> applicationHelper.updateDiscountById(loanId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildUpdateDiscountJson(BigDecimal.valueOf(25), "post-disburse")));
+
+        final JsonObject data = JsonParser.parseString(applicationHelper.retrieveById(loanId)).getAsJsonObject();
+        assertEqualBigDecimal(BigDecimal.valueOf(25), data.get("discount"));
+        assertEqualBigDecimal(BigDecimal.valueOf(5025), data.getAsJsonObject("balance").get("principalOutstanding"));
+
+        final CallFailedRuntimeException[] secondAddHolder = new CallFailedRuntimeException[1];
+        BusinessDateHelper.runAt(businessDate, () -> secondAddHolder[0] = applicationHelper.runUpdateDiscountByIdExpectingFailure(loanId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildUpdateDiscountJson(BigDecimal.valueOf(20), null)));
+        final CallFailedRuntimeException secondAddEx = secondAddHolder[0];
+        assertEquals(400, secondAddEx.getStatus());
+        assertNotNull(secondAddEx.getDeveloperMessage());
+        assertTrue(secondAddEx.getDeveloperMessage().contains("discount") || secondAddEx.getDeveloperMessage().contains("already"));
+    }
+
+    @Test
+    public void testUpdateDiscountAfterDisbursementWithDateDifferentFromDisbursementDateFails() {
+        final Long productId = createProductWithDiscountAllowed();
+        final Long loanId = submitAndTrack(new WorkingCapitalLoanApplicationTestBuilder() //
+                .withClientId(createdClientId) //
+                .withProductId(productId) //
+                .withPrincipal(BigDecimal.valueOf(5000)) //
+                .withPeriodPaymentRate(BigDecimal.ONE) //
+                .withTotalPayment(BigDecimal.valueOf(5500)) //
+                .buildSubmitJson());
+
+        final LocalDate approvedOnDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.approveById(loanId,
+                WorkingCapitalLoanApplicationTestBuilder.buildApproveJson(approvedOnDate, BigDecimal.valueOf(5000), null));
+        final LocalDate disbursementDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.disburseById(loanId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildDisburseJson(disbursementDate, BigDecimal.valueOf(5000)));
+
+        final String wrongBusinessDate = disbursementDate.plusDays(1).format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+        final CallFailedRuntimeException[] exHolder = new CallFailedRuntimeException[1];
+        BusinessDateHelper.runAt(wrongBusinessDate, () -> exHolder[0] = applicationHelper.runUpdateDiscountByIdExpectingFailure(loanId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildUpdateDiscountJson(BigDecimal.valueOf(25), null)));
+        final CallFailedRuntimeException ex = exHolder[0];
+        assertEquals(400, ex.getStatus());
+        assertNotNull(ex.getDeveloperMessage());
+        assertTrue(ex.getDeveloperMessage().contains("transaction.date.must.be.equal.disbursement.date"));
+    }
+
+    @Test
+    public void testUpdateDiscountAfterDisbursementFailsIfDiscountWasAlreadySetBeforeDisbursement() {
+        final Long productId = createProductWithDiscountAllowed();
+        final Long loanId = submitAndTrack(new WorkingCapitalLoanApplicationTestBuilder() //
+                .withClientId(createdClientId) //
+                .withProductId(productId) //
+                .withPrincipal(BigDecimal.valueOf(5000)) //
+                .withPeriodPaymentRate(BigDecimal.ONE) //
+                .withTotalPayment(BigDecimal.valueOf(5500)) //
+                .withDiscount(BigDecimal.valueOf(40)) //
+                .buildSubmitJson());
+
+        final LocalDate approvedOnDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.approveById(loanId,
+                WorkingCapitalLoanApplicationTestBuilder.buildApproveJson(approvedOnDate, BigDecimal.valueOf(5000), null));
+        final LocalDate disbursementDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.disburseById(loanId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildDisburseJson(disbursementDate, BigDecimal.valueOf(5000)));
+
+        final String businessDate = disbursementDate.format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+        final CallFailedRuntimeException[] exHolder = new CallFailedRuntimeException[1];
+        BusinessDateHelper.runAt(businessDate, () -> exHolder[0] = applicationHelper.runUpdateDiscountByIdExpectingFailure(loanId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildUpdateDiscountJson(BigDecimal.valueOf(20), null)));
+        final CallFailedRuntimeException ex = exHolder[0];
+        assertEquals(400, ex.getStatus());
+        assertNotNull(ex.getDeveloperMessage());
+        assertTrue(ex.getDeveloperMessage().contains("discount") || ex.getDeveloperMessage().contains("already set before disbursement"));
+    }
+
+    @Test
+    public void testUpdateDiscountAfterDisbursementFailsWhenDiscountWasSetAtApproval() {
+        final Long productId = createProductWithDiscountAllowed();
+        final Long loanId = submitAndTrack(new WorkingCapitalLoanApplicationTestBuilder() //
+                .withClientId(createdClientId) //
+                .withProductId(productId) //
+                .withPrincipal(BigDecimal.valueOf(5000)) //
+                .withPeriodPaymentRate(BigDecimal.ONE) //
+                .withTotalPayment(BigDecimal.valueOf(5500)) //
+                .buildSubmitJson());
+
+        final LocalDate approvedOnDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.approveById(loanId, WorkingCapitalLoanApplicationTestBuilder.buildApproveJson(approvedOnDate,
+                BigDecimal.valueOf(5000), BigDecimal.valueOf(40)));
+
+        final LocalDate disbursementDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.disburseById(loanId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildDisburseJson(disbursementDate, BigDecimal.valueOf(5000)));
+
+        final String businessDate = disbursementDate.format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+        final CallFailedRuntimeException[] exHolder = new CallFailedRuntimeException[1];
+        BusinessDateHelper.runAt(businessDate, () -> exHolder[0] = applicationHelper.runUpdateDiscountByIdExpectingFailure(loanId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildUpdateDiscountJson(BigDecimal.valueOf(20), null)));
+        final CallFailedRuntimeException ex = exHolder[0];
+        assertEquals(400, ex.getStatus());
+        assertNotNull(ex.getDeveloperMessage());
+        assertTrue(ex.getDeveloperMessage().contains("discount") || ex.getDeveloperMessage().contains("already set before disbursement"));
+    }
+
+    @Test
+    public void testUpdateDiscountAfterDisbursementFailsWhenProductDisallowsDiscountOverride() {
+        final Long productId = createProduct();
+        final Long loanId = submitAndTrack(new WorkingCapitalLoanApplicationTestBuilder() //
+                .withClientId(createdClientId) //
+                .withProductId(productId) //
+                .withPrincipal(BigDecimal.valueOf(5000)) //
+                .withPeriodPaymentRate(BigDecimal.ONE) //
+                .withTotalPayment(BigDecimal.valueOf(5500)) //
+                .buildSubmitJson());
+
+        final LocalDate approvedOnDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.approveById(loanId,
+                WorkingCapitalLoanApplicationTestBuilder.buildApproveJson(approvedOnDate, BigDecimal.valueOf(5000), null));
+        final LocalDate disbursementDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.disburseById(loanId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildDisburseJson(disbursementDate, BigDecimal.valueOf(5000)));
+
+        final String businessDate = disbursementDate.format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+        final CallFailedRuntimeException[] exHolder = new CallFailedRuntimeException[1];
+        BusinessDateHelper.runAt(businessDate, () -> exHolder[0] = applicationHelper.runUpdateDiscountByIdExpectingFailure(loanId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildUpdateDiscountJson(BigDecimal.valueOf(20), null)));
+        final CallFailedRuntimeException ex = exHolder[0];
+        assertEquals(400, ex.getStatus());
+        assertNotNull(ex.getDeveloperMessage());
+        assertTrue(ex.getDeveloperMessage().contains("override.not.allowed.by.product"));
+    }
+
+    @Test
+    public void testUpdateDiscountAfterDisbursementByExternalId() {
+        final Long productId = createProductWithDiscountAllowed();
+        final String loanExternalId = "wcl-loan-ext-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+
+        final Long loanId = submitAndTrack(new WorkingCapitalLoanApplicationTestBuilder() //
+                .withClientId(createdClientId) //
+                .withProductId(productId) //
+                .withPrincipal(BigDecimal.valueOf(5000)) //
+                .withPeriodPaymentRate(BigDecimal.ONE) //
+                .withTotalPayment(BigDecimal.valueOf(5500)) //
+                .withExternalId(loanExternalId) //
+                .buildSubmitJson());
+
+        final LocalDate approvedOnDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.approveById(loanId,
+                WorkingCapitalLoanApplicationTestBuilder.buildApproveJson(approvedOnDate, BigDecimal.valueOf(5000), null));
+
+        final LocalDate disbursementDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.disburseById(loanId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildDisburseJson(disbursementDate, BigDecimal.valueOf(5000)));
+
+        final String businessDate = disbursementDate.format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+        BusinessDateHelper.runAt(businessDate, () -> applicationHelper.updateDiscountByExternalId(loanExternalId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildUpdateDiscountJson(BigDecimal.valueOf(25), "post-disburse")));
+
+        final JsonObject data = JsonParser.parseString(applicationHelper.retrieveById(loanId)).getAsJsonObject();
+        assertEqualBigDecimal(BigDecimal.valueOf(25), data.get("discount"));
+        assertEqualBigDecimal(BigDecimal.valueOf(5025), data.getAsJsonObject("balance").get("principalOutstanding"));
+    }
+
+    @Test
+    public void testUpdateDiscountAfterDisbursementByExternalIdFailsWhenBusinessDateDifferentFromDisbursementDate() {
+        final Long productId = createProductWithDiscountAllowed();
+        final String loanExternalId = "wcl-loan-ext-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+
+        final Long loanId = submitAndTrack(new WorkingCapitalLoanApplicationTestBuilder() //
+                .withClientId(createdClientId) //
+                .withProductId(productId) //
+                .withPrincipal(BigDecimal.valueOf(5000)) //
+                .withPeriodPaymentRate(BigDecimal.ONE) //
+                .withTotalPayment(BigDecimal.valueOf(5500)) //
+                .withExternalId(loanExternalId) //
+                .buildSubmitJson());
+
+        final LocalDate approvedOnDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.approveById(loanId,
+                WorkingCapitalLoanApplicationTestBuilder.buildApproveJson(approvedOnDate, BigDecimal.valueOf(5000), null));
+
+        final LocalDate disbursementDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.disburseById(loanId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildDisburseJson(disbursementDate, BigDecimal.valueOf(5000)));
+
+        final String wrongBusinessDate = disbursementDate.plusDays(1).format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+        final CallFailedRuntimeException[] exHolder = new CallFailedRuntimeException[1];
+        BusinessDateHelper.runAt(wrongBusinessDate,
+                () -> exHolder[0] = applicationHelper.runUpdateDiscountByExternalIdExpectingFailure(loanExternalId,
+                        WorkingCapitalLoanDisbursementTestBuilder.buildUpdateDiscountJson(BigDecimal.valueOf(25), null)));
+
+        final CallFailedRuntimeException ex = exHolder[0];
+        assertEquals(400, ex.getStatus());
+        assertNotNull(ex.getDeveloperMessage());
+        assertTrue(ex.getDeveloperMessage().contains("transaction.date.must.be.equal.disbursement.date"));
+    }
+
+    @Test
+    public void testUpdateDiscountAfterDisbursementByExternalIdFailsIfDiscountWasAlreadySetBeforeDisbursement() {
+        final Long productId = createProductWithDiscountAllowed();
+        final String loanExternalId = "wcl-loan-ext-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+
+        final Long loanId = submitAndTrack(new WorkingCapitalLoanApplicationTestBuilder() //
+                .withClientId(createdClientId) //
+                .withProductId(productId) //
+                .withPrincipal(BigDecimal.valueOf(5000)) //
+                .withPeriodPaymentRate(BigDecimal.ONE) //
+                .withTotalPayment(BigDecimal.valueOf(5500)) //
+                .withDiscount(BigDecimal.valueOf(40)) //
+                .withExternalId(loanExternalId) //
+                .buildSubmitJson());
+
+        final LocalDate approvedOnDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.approveById(loanId,
+                WorkingCapitalLoanApplicationTestBuilder.buildApproveJson(approvedOnDate, BigDecimal.valueOf(5000), null));
+
+        final LocalDate disbursementDate = LocalDate.now(ZoneId.systemDefault());
+        applicationHelper.disburseById(loanId,
+                WorkingCapitalLoanDisbursementTestBuilder.buildDisburseJson(disbursementDate, BigDecimal.valueOf(5000)));
+
+        final String businessDate = disbursementDate.format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+        final CallFailedRuntimeException[] exHolder = new CallFailedRuntimeException[1];
+        BusinessDateHelper.runAt(businessDate,
+                () -> exHolder[0] = applicationHelper.runUpdateDiscountByExternalIdExpectingFailure(loanExternalId,
+                        WorkingCapitalLoanDisbursementTestBuilder.buildUpdateDiscountJson(BigDecimal.valueOf(20), null)));
+
+        final CallFailedRuntimeException ex = exHolder[0];
+        assertEquals(400, ex.getStatus());
+        assertNotNull(ex.getDeveloperMessage());
+        assertTrue(ex.getDeveloperMessage().contains("discount") || ex.getDeveloperMessage().contains("already set before disbursement"));
     }
 
     @Test
@@ -524,6 +960,29 @@ public class WorkingCapitalLoanDisbursementTest {
         assertEquals(400, ex.getStatus());
         assertNotNull(ex.getDeveloperMessage());
         assertTrue(ex.getDeveloperMessage().contains("discount") && ex.getDeveloperMessage().contains("exceed"));
+    }
+
+    @Test
+    public void testDisburseWithDiscountFailsWhenProductDisallowsDiscountOverride() {
+        final Long productId = createProduct();
+
+        final BigDecimal approvedPrincipal = BigDecimal.valueOf(5000);
+        final Long loanId = submitAndTrack(new WorkingCapitalLoanApplicationTestBuilder() //
+                .withClientId(createdClientId) //
+                .withProductId(productId) //
+                .withPrincipal(approvedPrincipal) //
+                .withPeriodPaymentRate(BigDecimal.ONE) //
+                .buildSubmitJson());
+
+        applicationHelper.approveById(loanId,
+                WorkingCapitalLoanApplicationTestBuilder.buildApproveJson(LocalDate.now(ZoneId.systemDefault()), approvedPrincipal, null));
+
+        final String disburseJson = WorkingCapitalLoanDisbursementTestBuilder.buildDisburseJson(LocalDate.now(ZoneId.systemDefault()),
+                approvedPrincipal, BigDecimal.valueOf(10), null, null, null, null, null, null, null);
+        final CallFailedRuntimeException ex = applicationHelper.runDisburseExpectingFailure(loanId, disburseJson);
+        assertEquals(400, ex.getStatus());
+        assertNotNull(ex.getDeveloperMessage());
+        assertTrue(ex.getDeveloperMessage().contains("override.not.allowed.by.product"));
     }
 
     @Test
@@ -987,12 +1446,15 @@ public class WorkingCapitalLoanDisbursementTest {
                 .withPeriodPaymentRate(BigDecimal.ONE) //
                 .buildSubmitJson());
 
-        final JsonObject beforeDisburse = JsonParser.parseString(applicationHelper.retrieveById(loanId)).getAsJsonObject();
-        final JsonObject firstDisbursementDetail = beforeDisburse.getAsJsonArray("disbursementDetails").get(0).getAsJsonObject();
-        final LocalDate expectedDateBeforeDisburse = parseDate(firstDisbursementDetail.get("expectedDisbursementDate"));
-
         applicationHelper.approveById(loanId, WorkingCapitalLoanApplicationTestBuilder
                 .buildApproveJson(LocalDate.now(ZoneId.systemDefault()), BigDecimal.valueOf(5000), null));
+
+        final JsonObject afterApprove = JsonParser.parseString(applicationHelper.retrieveById(loanId)).getAsJsonObject();
+        final JsonObject firstDetailAfterApprove = afterApprove.getAsJsonArray("disbursementDetails").get(0).getAsJsonObject();
+        final LocalDate expectedDateAfterApprove = parseDate(firstDetailAfterApprove.get("expectedDisbursementDate"));
+
+        final JsonObject scheduleAfterApprove = retrieveAmortizationScheduleByLoanId(loanId);
+        assertDateEquals(expectedDateAfterApprove, scheduleAfterApprove.get("expectedDisbursementDate"));
 
         final LocalDate actualDisbursementDate = LocalDate.now(ZoneId.systemDefault());
         applicationHelper.disburseById(loanId,
@@ -1003,7 +1465,7 @@ public class WorkingCapitalLoanDisbursementTest {
         applicationHelper.undoDisbursalById(loanId, WorkingCapitalLoanDisbursementTestBuilder.buildUndoDisburseJson());
 
         final JsonObject scheduleAfterUndo = retrieveAmortizationScheduleByLoanId(loanId);
-        assertDateEquals(expectedDateBeforeDisburse, scheduleAfterUndo.get("expectedDisbursementDate"));
+        assertDateEquals(expectedDateAfterApprove, scheduleAfterUndo.get("expectedDisbursementDate"));
         assertTrue(scheduleAfterUndo.has("payments") && scheduleAfterUndo.get("payments").isJsonArray(),
                 "Schedule should still exist after undo");
         assertFalse(scheduleAfterUndo.getAsJsonArray("payments").isEmpty(), "Schedule payments should not be empty after undo");
@@ -1036,7 +1498,7 @@ public class WorkingCapitalLoanDisbursementTest {
 
     private Long createProduct() {
         final String uniqueName = "WCL Product " + UUID.randomUUID().toString().substring(0, 8);
-        final String uniqueShortName = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+        final String uniqueShortName = Utils.uniqueRandomStringGenerator("", 4);
         final Long productId = productHelper
                 .createWorkingCapitalLoanProduct(
                         new WorkingCapitalLoanProductTestBuilder().withName(uniqueName).withShortName(uniqueShortName).build())
@@ -1047,7 +1509,7 @@ public class WorkingCapitalLoanDisbursementTest {
 
     private Long createProductWithDiscountAllowed() {
         final String uniqueName = "WCL Product " + UUID.randomUUID().toString().substring(0, 8);
-        final String uniqueShortName = UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+        final String uniqueShortName = Utils.uniqueRandomStringGenerator("", 4);
         final Long productId = productHelper.createWorkingCapitalLoanProduct(new WorkingCapitalLoanProductTestBuilder() //
                 .withName(uniqueName) //
                 .withShortName(uniqueShortName) //

@@ -662,6 +662,12 @@ public final class ErrorMessageHelper {
                 actual.toString(), expected.toString());
     }
 
+    public static String wrongStatusCodeInBreachScheduleRetrieval(Integer actual, Integer expected, Long loanId) {
+        return String.format(
+                "Not the expected HTTP status code for GET breach-schedule on loanId %d: Actual code is: %s. Expected code is: %s", loanId,
+                actual.toString(), expected.toString());
+    }
+
     public static String idNull() {
         return "The requested ID is null";
     }
@@ -1045,7 +1051,7 @@ public final class ErrorMessageHelper {
         return String.format("Working Capital Loan Product with identifier %s does not exist", identifierId);
     }
 
-    public static String workingCapitalDelinquencyBucketCreateDuplicateNameFailure(Long identifierId) {
+    public static String workingCapitalDelinquencyBucketDuplicateNameFailure(Long identifierId) {
         return String.format("Data integrity issue with resource: %d", identifierId);
     }
 
@@ -1061,6 +1067,14 @@ public final class ErrorMessageHelper {
         return String.format("Working Capital Breach with id %d was not found.", id);
     }
 
+    public static String workingCapitalNearBreachNotFoundFailure(final Long id) {
+        return String.format("Working Capital Near Breach with id %d was not found.", id);
+    }
+
+    public static String workingCapitalBreachDuplicateNameFailure(final Long id) {
+        return String.format("Data integrity issue with resource: %d", id);
+    }
+
     public static String disburseNotApprovedFailure(String status) {
         return String.format("Disbursement is not allowed from current status %s", status);
     }
@@ -1071,5 +1085,37 @@ public final class ErrorMessageHelper {
 
     public static String undoDisbursalDisallowedFailure(String status) {
         return String.format("Transition LOAN_DISBURSAL_UNDO is not allowed from status %s", status);
+    }
+
+    public static String discountAmountExceedFailure() {
+        return "Failed data validation due to: amount.cannot.exceed.created.discount.";
+    }
+
+    public static String discountAlreadySetBeforeDisburseFailure() {
+        return "Discount was already set before disbursement and cannot be added again";
+    }
+
+    public static String discountDiffDateFromDisburseFailure() {
+        return "Failed data validation due to: transaction.date.must.be.equal.disbursement.date.";
+    }
+
+    public static String overrideDisallowedByProductFailure() {
+        return "Failed data validation due to: override.not.allowed.by.product.";
+    }
+
+    public static String discountExceedCreatedDiscountFailure() {
+        return "Failed data validation due to: amount.cannot.exceed.created.discount.";
+    }
+
+    public static String nearBreachCannotEnableWithoutBreachFailure() {
+        return "Failed data validation due to: cannot.enable.near.breach.without.breach.";
+    }
+
+    public static String nearBreachMustBeLowerThenBreachFailure() {
+        return "Failed data validation due to: near.breach.frequency.must.be.lower.than.breach.frequency.";
+    }
+
+    public static String nearBreachIdNotFoundFailure(long nearBreachId) {
+        return String.format("Working Capital Near Breach with id %s was not found.", nearBreachId);
     }
 }

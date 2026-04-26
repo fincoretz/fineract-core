@@ -26,10 +26,12 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyBucket;
@@ -42,7 +44,10 @@ import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoa
 import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanRepository;
 import org.apache.fineract.portfolio.workingcapitalloanbreach.domain.WorkingCapitalBreach;
 import org.apache.fineract.portfolio.workingcapitalloanbreach.repository.WorkingCapitalBreachRepository;
+import org.apache.fineract.portfolio.workingcapitalloannearbreach.domain.WorkingCapitalNearBreach;
+import org.apache.fineract.portfolio.workingcapitalloannearbreach.repository.WorkingCapitalNearBreachRepository;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.WorkingCapitalLoanProductConstants;
+import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAccountingRuleType;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAdvancedPaymentAllocationsJsonParser;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAmortizationType;
 import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanDelinquencyStartType;
@@ -75,6 +80,8 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
     private final DelinquencyBucketRepository delinquencyBucketRepository;
     private final WorkingCapitalAdvancedPaymentAllocationsJsonParser advancedPaymentAllocationsJsonParser;
     private final WorkingCapitalBreachRepository breachRepository;
+    private final WorkingCapitalProductAccountingMappingService wcAccountingMappingService;
+    private final WorkingCapitalNearBreachRepository nearBreachRepository;
 
     @Transactional
     @Override
@@ -92,12 +99,19 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
                 command.parameterExists(WorkingCapitalLoanProductConstants.breachIdParamName)
                         ? command.longValueOfParameterNamed(WorkingCapitalLoanProductConstants.breachIdParamName)
                         : null);
+        final WorkingCapitalNearBreach nearBreach = (breach == null) ? null
+                : findNearBreachByIdIfProvided(command.parameterExists(WorkingCapitalLoanProductConstants.nearBreachIdParamName)
+                        ? command.longValueOfParameterNamed(WorkingCapitalLoanProductConstants.nearBreachIdParamName)
+                        : null);
         final List<WorkingCapitalLoanProductPaymentAllocationRule> paymentAllocationRules = this.advancedPaymentAllocationsJsonParser
                 .assembleWCPaymentAllocationRules(command);
-        final WorkingCapitalLoanProduct product = createProductFromCommand(fund, delinquencyBucket, breach, command,
+        final WorkingCapitalLoanProduct product = createProductFromCommand(fund, delinquencyBucket, breach, nearBreach, command,
                 paymentAllocationRules);
 
         this.repository.saveAndFlush(product);
+
+        // Create GL account mappings if accounting is enabled
+        this.wcAccountingMappingService.createAccountMapping(product.getId(), command);
 
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //
@@ -142,6 +156,28 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
 
         final Map<String, Object> changes = updateProductFields(product, command);
 
+        // Handle accounting rule update
+        if (command.parameterExists(WorkingCapitalLoanProductConstants.accountingRuleParamName)) {
+            final String newAccountingRuleValue = command
+                    .stringValueOfParameterNamed(WorkingCapitalLoanProductConstants.accountingRuleParamName);
+            if (newAccountingRuleValue == null || newAccountingRuleValue.isBlank()) {
+                throw new PlatformApiDataValidationException(List.of(ApiParameterError.parameterError(
+                        "validation.msg.WORKINGCAPITALLOANPRODUCT.accountingRule.cannot.be.blank",
+                        "The parameter `accountingRule` is mandatory.", WorkingCapitalLoanProductConstants.accountingRuleParamName)));
+            }
+            final WorkingCapitalAccountingRuleType newAccountingRule = WorkingCapitalAccountingRuleType.valueOf(newAccountingRuleValue);
+            final boolean accountingRuleChanged = newAccountingRule != product.getAccountingRule();
+
+            if (accountingRuleChanged) {
+                product.setAccountingRule(newAccountingRule);
+                changes.put(WorkingCapitalLoanProductConstants.accountingRuleParamName, newAccountingRuleValue);
+            }
+
+            final Map<String, Object> accountingMappingChanges = this.wcAccountingMappingService.updateAccountMapping(productId, command,
+                    accountingRuleChanged, newAccountingRule);
+            changes.putAll(accountingMappingChanges);
+        }
+
         if (!changes.isEmpty()) {
             this.repository.saveAndFlush(product);
         }
@@ -164,6 +200,7 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
             throw new WorkingCapitalLoanProductCannotBeDeletedException(productId);
         }
 
+        this.wcAccountingMappingService.deleteAccountMapping(productId);
         this.repository.delete(product);
 
         return new CommandProcessingResultBuilder() //
@@ -252,6 +289,14 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
             changes.put(WorkingCapitalLoanProductConstants.breachIdParamName, breachId);
         }
 
+        final Long existingNearBreachId = product.getNearBreach() != null ? product.getNearBreach().getId() : null;
+        if (command.isChangeInLongParameterNamed(WorkingCapitalLoanProductConstants.nearBreachIdParamName, existingNearBreachId)) {
+            final Long nearBreachId = command.longValueOfParameterNamed(WorkingCapitalLoanProductConstants.nearBreachIdParamName);
+            final WorkingCapitalNearBreach nearBreach = findNearBreachByIdIfProvided(nearBreachId);
+            product.setNearBreach(nearBreach);
+            changes.put(WorkingCapitalLoanProductConstants.nearBreachIdParamName, nearBreachId);
+        }
+
         // Update payment allocation rules if changed
         if (command.parameterExists(WorkingCapitalLoanProductConstants.paymentAllocationParamName)) {
             final List<WorkingCapitalLoanProductPaymentAllocationRule> newRules = this.advancedPaymentAllocationsJsonParser
@@ -290,7 +335,7 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
     }
 
     private WorkingCapitalLoanProduct createProductFromCommand(final Fund fund, final DelinquencyBucket delinquencyBucket,
-            final WorkingCapitalBreach breach, final JsonCommand command,
+            final WorkingCapitalBreach breach, final WorkingCapitalNearBreach nearBreach, final JsonCommand command,
             final List<WorkingCapitalLoanProductPaymentAllocationRule> paymentAllocationRules) {
         // Details category
         final String name = command.stringValueOfParameterNamed(WorkingCapitalLoanProductConstants.nameParamName);
@@ -331,6 +376,7 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
                 .stringValueOfParameterNamed(WorkingCapitalLoanProductConstants.delinquencyStartTypeParamName);
         final WorkingCapitalLoanDelinquencyStartType delinquencyStartType = WorkingCapitalLoanDelinquencyStartType
                 .fromString(delinquencyStartTypeValue);
+
         final WorkingCapitalLoanProductRelatedDetail relatedDetail = new WorkingCapitalLoanProductRelatedDetail(amortizationType,
                 npvDayCount, principal, periodPaymentRate, repaymentEvery, repaymentFrequencyType, discount, delinquencyGraceDays,
                 delinquencyStartType);
@@ -351,11 +397,18 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
         final WorkingCapitalLoanProductMinMaxConstraints minMaxConstraints = new WorkingCapitalLoanProductMinMaxConstraints(minPrincipal,
                 maxPrincipal, minPeriodPaymentRate, maxPeriodPaymentRate);
 
+        // Accounting
+        final String accountingRuleValue = command.parameterExists(WorkingCapitalLoanProductConstants.accountingRuleParamName)
+                ? command.stringValueOfParameterNamed(WorkingCapitalLoanProductConstants.accountingRuleParamName)
+                : WorkingCapitalAccountingRuleType.NONE.name();
+        final WorkingCapitalAccountingRuleType accountingRule = WorkingCapitalAccountingRuleType.valueOf(accountingRuleValue);
+
         // Configurable attributes
         final WorkingCapitalLoanProductConfigurableAttributes configurableAttributes = createConfigurableAttributesFromCommand(command);
 
-        return new WorkingCapitalLoanProduct(name, shortName, externalId, fund, delinquencyBucket, breach, startDate, closeDate,
-                description, currency, relatedDetail, minMaxConstraints, paymentAllocationRules, configurableAttributes);
+        return new WorkingCapitalLoanProduct(name, shortName, externalId, fund, delinquencyBucket, startDate, closeDate, description,
+                accountingRule, currency, relatedDetail, minMaxConstraints, paymentAllocationRules, configurableAttributes, breach,
+                nearBreach);
     }
 
     private WorkingCapitalBreach findBreachByIdIfProvided(final Long breachId) {
@@ -365,6 +418,13 @@ public class WorkingCapitalLoanProductWritePlatformServiceImpl implements Workin
         return this.breachRepository.findById(breachId)
                 .orElseThrow(() -> new GeneralPlatformDomainRuleException("error.msg.wclp.breach.not.found",
                         "Working Capital Breach with id " + breachId + " was not found.", breachId));
+    }
+
+    private WorkingCapitalNearBreach findNearBreachByIdIfProvided(final Long nearBreachId) {
+        return (nearBreachId == null) ? null
+                : this.nearBreachRepository.findById(nearBreachId)
+                        .orElseThrow(() -> new GeneralPlatformDomainRuleException("error.msg.wclp.near.breach.not.found",
+                                "Working Capital Near Breach with id " + nearBreachId + " was not found.", nearBreachId));
     }
 
     private WorkingCapitalLoanProductConfigurableAttributes createConfigurableAttributesFromCommand(final JsonCommand command) {

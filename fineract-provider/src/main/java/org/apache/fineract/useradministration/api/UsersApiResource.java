@@ -94,7 +94,6 @@ public class UsersApiResource {
             + "\n" + "\n" + "users?fields=id,username,email,officeName")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = UsersApiResourceSwagger.GetUsersResponse.class)))) })
-    @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     public String retrieveAll(@Context final UriInfo uriInfo) {
 
@@ -112,7 +111,6 @@ public class UsersApiResource {
             + "\n" + "users/1?template=true\n" + "\n" + "\n" + "users/1?fields=username,officeName")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = UsersApiResourceSwagger.GetUsersUserIdResponse.class))) })
-    @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     public String retrieveOne(@PathParam("userId") @Parameter(description = "userId") final Long userId, @Context final UriInfo uriInfo) {
 
@@ -135,7 +133,6 @@ public class UsersApiResource {
             + "\n" + "Field Defaults\n" + "Allowed description Lists\n" + "Example Request:\n" + "\n" + "users/template")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = UsersApiResourceSwagger.GetUsersTemplateResponse.class))) })
-    @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     public String template(@Context final UriInfo uriInfo) {
 
@@ -151,7 +148,7 @@ public class UsersApiResource {
     @Operation(summary = "Create a User", operationId = "createUser", description = "Adds new application user.\n" + "\n"
             + "Note: Password information is not required (or processed). Password details at present are auto-generated and then sent to the email account given (which is why it can take a few seconds to complete).\n"
             + "\n" + "Mandatory Fields: \n" + "username, firstname, lastname, email, officeId, roles, sendPasswordToEmail\n" + "\n"
-            + "Optional Fields: \n" + "staffId,passwordNeverExpires,isLoginRetriesEnabled")
+            + "Optional Fields: \n" + "staffId,passwordNeverExpires,isLoginRetriesEnabled,isPasswordResetAllowed")
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = UsersApiResourceSwagger.PostUsersRequest.class)))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = UsersApiResourceSwagger.PostUsersResponse.class))) })
@@ -216,7 +213,6 @@ public class UsersApiResource {
     @Operation(summary = "Delete a User", operationId = "deleteUser", description = "Removes the user and the associated roles and permissions.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = UsersApiResourceSwagger.DeleteUsersUserIdResponse.class))) })
-    @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     public String delete(@PathParam("userId") @Parameter(description = "userId") final Long userId) {
 
