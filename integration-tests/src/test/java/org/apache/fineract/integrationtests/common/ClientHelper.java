@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.client.feign.util.FeignCalls;
 import org.apache.fineract.client.models.AddressData;
 import org.apache.fineract.client.models.ClientAddressRequest;
 import org.apache.fineract.client.models.ClientTextSearch;
@@ -216,10 +217,8 @@ public class ClientHelper {
         return Calls.ok(FineractClientHelper.getFineractClient().clientSearchV2.searchClientsByText(request));
     }
 
-    public static String getClientAccountsRaw(final RequestSpecification requestSpec, final ResponseSpecification responseSpec,
-            final long clientId) {
-        final String url = CLIENT_URL + "/" + clientId + "/accounts?" + Utils.TENANT_IDENTIFIER;
-        return Utils.performServerGet(requestSpec, responseSpec, url);
+    public static GetClientsClientIdAccountsResponse getClientAccounts(final long clientId) {
+        return FeignCalls.ok(() -> FineractFeignClientHelper.getFineractFeignClient().clients().retrieveAllClientAccounts(clientId));
     }
 
     // TODO: Rewrite to use fineract-client instead!
@@ -1163,6 +1162,13 @@ public class ClientHelper {
         requestSpec.header(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN);
         return Utils.performServerOutputTemplateLocationGet(requestSpec, responseSpec,
                 "/fineract-provider/api/v1/imports/getOutputTemplateLocation" + "?" + Utils.TENANT_IDENTIFIER, importDocumentId);
+    }
+
+    @Deprecated(forRemoval = true)
+    public byte[] downloadOutputTemplate(final String importDocumentId) {
+        requestSpec.header(HttpHeaders.CONTENT_TYPE, "application/vnd.ms-excel");
+        return Utils.performServerOutputTemplateDownloadGet(requestSpec, responseSpec,
+                "/fineract-provider/api/v1/imports/downloadOutputTemplate" + "?" + Utils.TENANT_IDENTIFIER, importDocumentId);
     }
 
     // TODO: Rewrite to use fineract-client instead!

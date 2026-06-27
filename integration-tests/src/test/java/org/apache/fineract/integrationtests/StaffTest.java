@@ -19,7 +19,6 @@
 package org.apache.fineract.integrationtests;
 
 import com.google.gson.Gson;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.builder.ResponseSpecBuilder;
 import io.restassured.http.ContentType;
@@ -36,7 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @Deprecated // TODO move this into new org.apache.fineract.integrationtests.client.StaffTest
-@SuppressFBWarnings(value = "RV_EXCEPTION_NOT_THROWN", justification = "False positive")
+
 public class StaffTest {
 
     private RequestSpecification requestSpec;
@@ -173,8 +172,7 @@ public class StaffTest {
         final String firstname = Utils.uniqueRandomStringGenerator("michael_", 10);
         final String lastname = Utils.uniqueRandomStringGenerator("Doe_", 10);
         final String externalId = UUID.randomUUID().toString();
-        final String mobileNo = Utils.uniqueRandomStringGenerator("num_", 10);
-
+        final String mobileNo = "+14155552671";
         map.put("firstname", firstname);
         map.put("lastname", lastname);
         map.put("externalId", externalId);

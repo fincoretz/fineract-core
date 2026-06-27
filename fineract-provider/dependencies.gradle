@@ -62,6 +62,7 @@ dependencies {
             'org.springframework.boot:spring-boot-starter-validation',
             'org.springframework.boot:spring-boot-starter-security',
             'org.springframework.boot:spring-boot-starter-oauth2-authorization-server',
+            'org.springframework.boot:spring-boot-starter-oauth2-client',
             'org.springframework.boot:spring-boot-starter-cache',
             'org.springframework.boot:spring-boot-starter-oauth2-resource-server',
             'org.springframework.boot:spring-boot-starter-actuator',
@@ -100,7 +101,6 @@ dependencies {
             'org.apache.commons:commons-lang3',
             'commons-io:commons-io',
             'org.apache.poi:poi',
-            'org.apache.poi:poi-ooxml',
             'org.apache.tika:tika-core',
             'org.apache.tika:tika-parser-microsoft-module',
             'org.apache.tika:tika-parser-miscoffice-module',
@@ -113,10 +113,7 @@ dependencies {
 
             'javax.cache:cache-api',
 
-            'com.github.spotbugs:spotbugs-annotations',
             'io.swagger.core.v3:swagger-annotations-jakarta',
-
-            'com.google.cloud.sql:mysql-socket-factory-connector-j-8',
             'com.squareup.retrofit2:converter-gson',
             'com.sun.activation:jakarta.activation',
             'com.sun.mail:jakarta.mail',
@@ -163,6 +160,9 @@ dependencies {
         exclude group: 'com.zaxxer', module: 'HikariCP-java7'
     }
     implementation('org.apache.commons:commons-csv'){}
+    implementation('org.apache.poi:poi-ooxml') {
+        exclude group: 'org.apache.poi', module: 'poi-ooxml-lite'
+    }
     implementation ('software.amazon.awssdk:s3') {
     }
     implementation ('software.amazon.awssdk:auth') {
@@ -192,13 +192,10 @@ dependencies {
         exclude group: 'com.sun.activation'
     }
 
-    // runtimeOnly dependencies are things that Fineract code has no direct compile time dependency on, but which must be present at run-time
-    runtimeOnly(
-            // Although fineract (at the time of writing) doesn't have any compile time dep. on httpclient,
-            // it's useful to have this for the Spring Boot TestRestTemplate http://docs.spring.io/spring-boot/docs/current-SNAPSHOT/reference/htmlsingle/#boot-features-rest-templates-test-utility
-            'org.apache.httpcomponents:httpclient'
-            )
+    implementation('org.apache.httpcomponents:httpclient')
 
+    compileOnly 'com.github.spotbugs:spotbugs-annotations'
+    testCompileOnly 'com.github.spotbugs:spotbugs-annotations'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.mapstruct:mapstruct-processor'
@@ -230,4 +227,9 @@ dependencies {
         exclude group: 'org.skyscreamer'
     }
     testImplementation ('org.mockito:mockito-inline')
+
+    testRuntimeOnly(
+            'org.mariadb.jdbc:mariadb-java-client',
+            'com.mysql:mysql-connector-j',
+            )
 }

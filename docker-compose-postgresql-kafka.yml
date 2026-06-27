@@ -16,11 +16,11 @@
 # under the License.
 #
 
-# You can replace and test a more recent version of docker compose
+# FOR TESTING PURPOSES ONLY! NOT SUITABLE FOR PRODUCTION USAGE!
 version: "3.7"
 services:
   kafka:
-    image: "apache/kafka:4.1.1-rc2"
+    image: "apache/kafka:4.2.0-rc2"
     ports:
       - "9092:9092"
     env_file:
@@ -65,3 +65,4 @@ services:
       - ./config/docker/env/fineract-common.env
       - ./config/docker/env/fineract-postgresql.env
       - ./config/docker/env/kafka-client.env
+# FOR TESTING PURPOSES ONLY! NOT SUITABLE FOR PRODUCTION USAGE!

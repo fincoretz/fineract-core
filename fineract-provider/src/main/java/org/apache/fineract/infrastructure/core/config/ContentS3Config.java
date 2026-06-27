@@ -29,6 +29,7 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.checksums.RequestChecksumCalculation;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
@@ -40,7 +41,8 @@ public class ContentS3Config {
     @Bean
     @ConditionalOnProperty("fineract.content.s3.enabled")
     public S3Client contentS3Client(FineractProperties fineractProperties) {
-        S3ClientBuilder builder = S3Client.builder().credentialsProvider(getCredentialProvider(fineractProperties.getContent().getS3()));
+        S3ClientBuilder builder = S3Client.builder().credentialsProvider(getCredentialProvider(fineractProperties.getContent().getS3()))
+                .requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED);
 
         if (!Strings.isNullOrEmpty(fineractProperties.getContent().getS3().getRegion())) {
             builder.region(Region.of(fineractProperties.getContent().getS3().getRegion()));
@@ -55,7 +57,7 @@ public class ContentS3Config {
 
     private AwsCredentialsProvider getCredentialProvider(FineractProperties.FineractContentS3Properties s3Properties) {
         if (Strings.isNullOrEmpty(s3Properties.getAccessKey()) || Strings.isNullOrEmpty(s3Properties.getSecretKey())) {
-            return DefaultCredentialsProvider.create();
+            return DefaultCredentialsProvider.builder().build();
         }
 
         return StaticCredentialsProvider.create(AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey()));

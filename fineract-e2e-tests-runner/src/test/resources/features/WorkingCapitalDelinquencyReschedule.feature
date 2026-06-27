@@ -1,3 +1,4 @@
+@WorkingCapital
 @WorkingCapitalDelinquencyRescheduleActionFeature @WCCOBFeature
 Feature: Working Capital Delinquency Reschedule Action
 
@@ -8,7 +9,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -46,7 +47,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -78,7 +79,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -110,7 +111,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -138,7 +139,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     Then Admin fails to create WC delinquency reschedule action with minimumPayment 1 PERCENTAGE and frequency 30 DAYS with error containing "only for active Working Capital loans"
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
@@ -156,7 +157,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -192,7 +193,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -226,7 +227,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -252,7 +253,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -271,7 +272,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -297,7 +298,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -317,7 +318,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -343,7 +344,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -375,7 +376,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -405,7 +406,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -419,7 +420,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -433,7 +434,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -452,7 +453,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -471,7 +472,7 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -487,26 +488,28 @@ Feature: Working Capital Delinquency Reschedule Action
       | 1            | 01 January 2026 | 30 January 2026 | 100            | 0          | 100               |                       |
     Then WC loan delinquency actions contain 2 actions
 
+  @TestRailId:C76652
   Scenario: Verify that reschedule with no parameters is rejected
     When Admin sets the business date to "01 January 2026"
     When Admin creates a client with random data
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
     When Admin runs inline COB job for Working Capital Loan
     Then Admin fails to create WC delinquency reschedule action with no parameters with error containing "At least one of payment"
 
+  @TestRailId:C76653
   Scenario: Verify that reschedule with minimumPayment but without minimumPaymentType is rejected
     When Admin sets the business date to "01 January 2026"
     When Admin creates a client with random data
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -515,13 +518,14 @@ Feature: Working Capital Delinquency Reschedule Action
       | minimumPayment |
       | 5              |
 
+  @TestRailId:C76654
   Scenario: Verify that reschedule with frequency but without frequencyType is rejected
     When Admin sets the business date to "01 January 2026"
     When Admin creates a client with random data
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -530,13 +534,14 @@ Feature: Working Capital Delinquency Reschedule Action
       | frequency |
       | 30        |
 
+  @TestRailId:C76655
   Scenario: Verify that reschedule with invalid minimumPaymentType is rejected
     When Admin sets the business date to "01 January 2026"
     When Admin creates a client with random data
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -545,13 +550,14 @@ Feature: Working Capital Delinquency Reschedule Action
       | minimumPayment | minimumPaymentType |
       | 5              | INVALID            |
 
+  @TestRailId:C76656
   Scenario: Verify that FLAT reschedule with COB generates periods with flat amount
     When Admin sets the business date to "01 January 2026"
     When Admin creates a client with random data
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -568,13 +574,14 @@ Feature: Working Capital Delinquency Reschedule Action
       | 3            | 02 March 2026     | 31 March 2026     | 150            | 0          | 150               | false                 |
       | 4            | 01 April 2026     | 30 April 2026     | 150            | 0          | 150               |                       |
 
+  @TestRailId:C76657
   Scenario: Verify that reschedule with FLAT minimumPaymentType uses flat amount
     When Admin sets the business date to "01 January 2026"
     When Admin creates a client with random data
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -589,13 +596,15 @@ Feature: Working Capital Delinquency Reschedule Action
       | action     | startDate       | minimumPayment | minimumPaymentType | frequency | frequencyType |
       | RESCHEDULE | 01 January 2026 | 150            | FLAT               | 30        | DAYS          |
 
+  @Skip
+  @TestRailId:C76658
   Scenario: Verify that reschedule with payment group only keeps original frequency
     When Admin sets the business date to "01 January 2026"
     When Admin creates a client with random data
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
@@ -618,13 +627,15 @@ Feature: Working Capital Delinquency Reschedule Action
       | 7            | 30 June 2026     | 29 July 2026        | 100            | 0          | 100               | false                 |
       | 8            | 30 July 2026     | 28 August 2026      | 100            | 0          | 100               |                       |
 
+  @Skip
+  @TestRailId:C76659
   Scenario: Verify that reschedule with frequency group only keeps original payment
     When Admin sets the business date to "01 January 2026"
     When Admin creates a client with random data
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
     When Admin creates a new Working Capital Loan Product with delinquency bucket
     When Admin creates a working capital loan with the following data:
-      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct      | submittedOnDate  | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP_DELINQUENCY | 01 January 2026  | 01 January 2026          | 10000           | 10000        | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount

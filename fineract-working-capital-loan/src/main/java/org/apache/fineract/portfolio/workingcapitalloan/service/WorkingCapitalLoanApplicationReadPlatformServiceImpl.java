@@ -19,6 +19,8 @@
 package org.apache.fineract.portfolio.workingcapitalloan.service;
 
 import jakarta.persistence.criteria.Predicate;
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -31,6 +33,8 @@ import org.apache.fineract.infrastructure.core.api.ApiFacingEnum;
 import org.apache.fineract.infrastructure.core.data.StringEnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
+import org.apache.fineract.organisation.monetary.data.CurrencyData;
+import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 import org.apache.fineract.portfolio.accountdetails.data.WorkingCapitalLoanAccountSummaryData;
 import org.apache.fineract.portfolio.client.service.ClientReadPlatformService;
 import org.apache.fineract.portfolio.delinquency.data.DelinquencyBucketData;
@@ -73,6 +77,7 @@ public class WorkingCapitalLoanApplicationReadPlatformServiceImpl implements Wor
     private final WorkingCapitalBreachReadPlatformService breachReadPlatformService;
     private final WorkingCapitalLoanDelinquencyReadPlatformService workingCapitalLoanDelinquencyReadPlatformService;
     private final WorkingCapitalNearBreachReadPlatformService nearBreachReadPlatformService;
+    private final ProjectedAmortizationScheduleRepositoryWrapper scheduleRepositoryWrapper;
 
     @Override
     public WorkingCapitalLoanTemplateData retrieveTemplate(final Long productId, final Long clientId) {
@@ -102,7 +107,8 @@ public class WorkingCapitalLoanApplicationReadPlatformServiceImpl implements Wor
                         .discount(product.getDiscount()) //
                         .paymentAllocation(product.getPaymentAllocation()) //
                         .breach(product.getBreach()) //
-                        .nearBreach(product.getNearBreach()); //
+                        .nearBreach(product.getNearBreach()) //
+                        .breachGraceDays(product.getBreachGraceDays()); //
             }
         }
         if (clientId != null) {
@@ -162,20 +168,27 @@ public class WorkingCapitalLoanApplicationReadPlatformServiceImpl implements Wor
         WorkingCapitalLoanCollectionData collectionData = workingCapitalLoanDelinquencyReadPlatformService.getCollectionData(loanId,
                 ThreadLocalContextUtil.getBusinessDate());
         data.setCollectionData(collectionData);
+        enrichWithRateAndTerm(loan, data);
         return data;
     }
 
     @Override
     public WorkingCapitalLoanData retrieveOne(final ExternalId externalId) {
-        final WorkingCapitalLoan loan = this.repository.findByExternalIdWithDetails(externalId)
-                .orElseThrow(() -> new WorkingCapitalLoanNotFoundException(externalId));
-        final WorkingCapitalLoan loanWithDetails = this.repository.findByIdWithFullDetails(loan.getId())
-                .orElseThrow(() -> new WorkingCapitalLoanNotFoundException(loan.getId()));
-        WorkingCapitalLoanData data = this.mapper.toData(loanWithDetails);
-        WorkingCapitalLoanCollectionData collectionData = workingCapitalLoanDelinquencyReadPlatformService.getCollectionData(loan.getId(),
-                ThreadLocalContextUtil.getBusinessDate());
-        data.setCollectionData(collectionData);
-        return data;
+        return retrieveOne(repository.findIdByExternalId(externalId));
+    }
+
+    private void enrichWithRateAndTerm(final WorkingCapitalLoan loan, final WorkingCapitalLoanData data) {
+        final MathContext mc = MoneyHelper.getMathContext();
+        final CurrencyData currency = WorkingCapitalLoanCurrencyResolver.resolveCurrency(loan);
+        scheduleRepositoryWrapper.readModel(loan.getId(), mc, currency).ifPresent(model -> {
+            final BigDecimal dailyEir = model.effectiveInterestRate();
+            data.setTotalNoPayments(model.effectiveTotalTerm());
+            data.setPeriodPaymentAmount(model.expectedPaymentAmount() != null ? model.expectedPaymentAmount().getAmount() : null);
+            data.setDailyEir(dailyEir);
+            if (dailyEir != null) {
+                data.setCalculatedAnnualEir(BigDecimal.ONE.add(dailyEir, mc).pow(365, mc).subtract(BigDecimal.ONE, mc));
+            }
+        });
     }
 
     @Override

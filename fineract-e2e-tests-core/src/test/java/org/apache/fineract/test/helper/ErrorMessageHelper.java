@@ -18,7 +18,6 @@
  */
 package org.apache.fineract.test.helper;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -29,27 +28,19 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.client.models.BatchResponse;
 import org.apache.fineract.client.models.Header;
 import org.apache.fineract.client.models.LoanAccountLockResponseDTO;
-import retrofit2.Response;
 
 public final class ErrorMessageHelper {
 
     public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd MMMM yyyy");
+    public static final String DATA_INTEGRITY_ISSUE_ENTITY_LINKED_CODE = "error.msg.data.integrity.issue.entity.linked";
 
     private ErrorMessageHelper() {}
-
-    public static String requestFailed(Response response) throws IOException {
-        return String.format("Request failed. Error:%n%s", response.errorBody() != null ? response.errorBody().string() : null);
-    }
-
-    public static String requestFailedWithCode(Response response) {
-        return String.format("Response has error code: %2d", response.code());
-    }
 
     public static String batchRequestFailedWithCode(BatchResponse response) {
         return String.format("Response has error code: %2d in request: %2d", response.getStatusCode(), response.getRequestId());
     }
 
-    public static String chargeAppliesToIsInvalid(Enum chargeAppliesTo) {
+    public static String chargeAppliesToIsInvalid(final Enum<?> chargeAppliesTo) {
         return String.format("%s is invalid input for charge applies to field", chargeAppliesTo);
     }
 
@@ -690,6 +681,11 @@ public final class ErrorMessageHelper {
         return String.format("List of locked loan accounts contains the loan with loanId %s. List of locked loans: %n%s", loanId, bodyStr);
     }
 
+    public static String expectedLoanToRemainLocked(Long loanId, LoanAccountLockResponseDTO response) {
+        String bodyStr = response.toString();
+        return String.format("Expected loan %s to remain locked after COB but it is not present in the lock list: %n%s", loanId, bodyStr);
+    }
+
     public static String wrongValueInLineDelinquencyActions(int line, List<String> actual, List<String> expected) {
         String lineStr = String.valueOf(line);
         String expectedStr = expected.toString();
@@ -874,6 +870,13 @@ public final class ErrorMessageHelper {
                 expectedToStr);
     }
 
+    public static String wrongRepaymentStartDateType(final Integer actual, final Integer expected) {
+        final String actualToStr = actual.toString();
+        final String expectedToStr = expected.toString();
+        return String.format("Wrong value in LoanDetails/repaymentStartDateType. %nActual value is: %s %nExpected Value is: %s",
+                actualToStr, expectedToStr);
+    }
+
     public static String downpaymentDisabledOnProductErrorCodeMsg() {
         return "The Loan can not override the downpayment properties because in the Loan Product the downpayment is disabled";
     }
@@ -1039,12 +1042,16 @@ public final class ErrorMessageHelper {
     }
 
     public static String paymentAllocationRulesInvalidNumberFailure(int actualNumberOfPaymentAllocationRules) {
-        return String.format("Each provided payment allocation must contain exactly 3 allocation rules, but %d were provided",
+        return String.format("Each provided payment allocation must contain exactly 6 allocation rules, but %d were provided",
                 actualNumberOfPaymentAllocationRules);
     }
 
     public static String paymentAllocationRulesInvalidValueFailure() {
         return "One or more payment allocation types are invalid or not recognized";
+    }
+
+    public static String paymentAllocationRulesDuplicateFailure() {
+        return "The list of provided payment allocation rules must not contain any duplicates";
     }
 
     public static String workingCapitalLoanProductIdentifiedDoesNotExistFailure(String identifierId) {
@@ -1075,6 +1082,14 @@ public final class ErrorMessageHelper {
         return String.format("Data integrity issue with resource: %d", id);
     }
 
+    public static String workingCapitalDelinquencyBucketLinkedToLoanProductFailure(final Long id) {
+        return String.format("Data integrity issue with resource: %d", id);
+    }
+
+    public static String workingCapitalBreachLinkedToLoanProductFailure(final Long id) {
+        return String.format("Data integrity issue with resource: %d", id);
+    }
+
     public static String disburseNotApprovedFailure(String status) {
         return String.format("Disbursement is not allowed from current status %s", status);
     }
@@ -1087,8 +1102,8 @@ public final class ErrorMessageHelper {
         return String.format("Transition LOAN_DISBURSAL_UNDO is not allowed from status %s", status);
     }
 
-    public static String discountAmountExceedFailure() {
-        return "Failed data validation due to: amount.cannot.exceed.created.discount.";
+    public static String overrideDisallowedByProductFailure() {
+        return "Failed data validation due to: override.not.allowed.by.product.";
     }
 
     public static String discountAlreadySetBeforeDisburseFailure() {
@@ -1099,16 +1114,48 @@ public final class ErrorMessageHelper {
         return "Failed data validation due to: transaction.date.must.be.equal.disbursement.date.";
     }
 
-    public static String overrideDisallowedByProductFailure() {
-        return "Failed data validation due to: override.not.allowed.by.product.";
+    public static String discountAdjustmentExceedFailure() {
+        return "Failed data validation due to: cannot.be.more.than.discount.fee.";
     }
 
-    public static String discountExceedCreatedDiscountFailure() {
-        return "Failed data validation due to: amount.cannot.exceed.created.discount.";
+    public static String discountAdjustmentBeforeDiscountDateFailure() {
+        return "Failed data validation due to: cannot.be.before.discount.fee.date.";
+    }
+
+    public static String discountAdjustmentFutureDateFailure() {
+        return "Failed data validation due to: cannot.be.a.future.date.";
+    }
+
+    public static String discountAdjustmentZeroAmountFailure() {
+        return "The parameter `transactionAmount` must be greater than 0.";
+    }
+
+    public static String discountAdjustmentNotActiveLoanFailure() {
+        return "Failed data validation due to: adjustment.only.allowed.for.active.loan.";
+    }
+
+    public static String discountAdjustmentUndoAlreadyReversedFailure() {
+        return "Failed data validation due to: discount.adjustment.already.reversed.";
+    }
+
+    public static String discountAdjustmentUndoInvalidTypeFailure() {
+        return "Undo is not supported for transaction type";
+    }
+
+    public static String discountAdjustmentUndoTransactionNotFoundFailure() {
+        return "Working capital loan transaction not found";
+    }
+
+    public static String discountAdjustmentUndoNotActiveLoanFailure() {
+        return "Failed data validation due to: undo.discount.adjustment.only.allowed.for.active.loan.";
     }
 
     public static String nearBreachCannotEnableWithoutBreachFailure() {
         return "Failed data validation due to: cannot.enable.near.breach.without.breach.";
+    }
+
+    public static String discountExceedProductDiscountFailure() {
+        return "Failed data validation due to: amount.cannot.exceed.product.discount.";
     }
 
     public static String nearBreachMustBeLowerThenBreachFailure() {
@@ -1117,5 +1164,9 @@ public final class ErrorMessageHelper {
 
     public static String nearBreachIdNotFoundFailure(long nearBreachId) {
         return String.format("Working Capital Near Breach with id %s was not found.", nearBreachId);
+    }
+
+    public static String periodPaymentRateOnNonActiveLoanFailure() {
+        return "rate.change.not.allowed.for.non.active.loan";
     }
 }

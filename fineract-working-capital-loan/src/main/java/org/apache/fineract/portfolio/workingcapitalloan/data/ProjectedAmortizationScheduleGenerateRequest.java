@@ -29,9 +29,9 @@ import lombok.Setter;
 @NoArgsConstructor
 public class ProjectedAmortizationScheduleGenerateRequest {
 
-    private BigDecimal originationFeeAmount;
+    private BigDecimal discountFeeAmount;
     private BigDecimal netDisbursementAmount;
-    private BigDecimal totalPaymentValue;
+    private BigDecimal totalPaymentVolume;
     private BigDecimal periodPaymentRate;
     private int npvDayCount;
     private LocalDate expectedDisbursementDate;

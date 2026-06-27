@@ -35,11 +35,17 @@ public interface AccountLockRepository<T extends AccountLock> {
 
     boolean existsByLoanIdAndLockOwner(Long loanId, LockOwner lockOwner);
 
+    boolean existsByLoanIdInAndLockOwnerIn(List<Long> loanIds, List<LockOwner> lockOwners);
+
     boolean existsByLoanIdAndLockOwnerAndErrorIsNotNull(Long loanId, LockOwner lockOwner);
+
+    boolean existsByLoanIdInAndLockOwnerInAndErrorIsNotNull(List<Long> loanIds, List<LockOwner> lockOwners);
 
     List<T> findAllByLoanIdInAndLockOwner(List<Long> loanIds, LockOwner lockOwner);
 
     void removeByLockOwnerInAndErrorIsNotNullAndLockPlacedOnCobBusinessDateIsNotNull(List<LockOwner> lockOwners);
+
+    int deleteOrphanedLocksForProcessedAccounts(List<LockOwner> lockOwners);
 
     Page<T> findAll(Pageable loanAccountLockPage);
 

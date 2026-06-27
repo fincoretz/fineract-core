@@ -27,10 +27,10 @@ import io.restassured.specification.ResponseSpecification;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -41,14 +41,13 @@ import java.util.UUID;
 import org.apache.fineract.client.models.GetOfficesResponse;
 import org.apache.fineract.infrastructure.bulkimport.constants.SavingsConstants;
 import org.apache.fineract.infrastructure.bulkimport.constants.TemplatePopulateImportConstants;
-import org.apache.fineract.integrationtests.bulkimport.importhandler.LocalContentStorageUtil;
+import org.apache.fineract.integrationtests.bulkimport.importhandler.BulkImportOutputTemplateHelper;
 import org.apache.fineract.integrationtests.common.GroupHelper;
 import org.apache.fineract.integrationtests.common.OfficeHelper;
 import org.apache.fineract.integrationtests.common.Utils;
 import org.apache.fineract.integrationtests.common.organisation.StaffHelper;
 import org.apache.fineract.integrationtests.common.savings.SavingsAccountHelper;
 import org.apache.fineract.integrationtests.common.savings.SavingsProductHelper;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
@@ -167,16 +166,15 @@ public class SavingsImportHandlerTest {
         firstSavingsRow.createCell(SavingsConstants.OVER_DRAFT_LIMIT_COL)
                 .setCellValue(savingsProductSheet.getRow(1).getCell(15).getNumericCellValue());
 
-        String currentdirectory = new File("").getAbsolutePath();
-        File directory = new File(currentdirectory + File.separator + "src" + File.separator + "integrationTest" + File.separator
-                + "resources" + File.separator + "bulkimport" + File.separator + "importhandler" + File.separator + "savings");
-        if (!directory.exists()) {
-            directory.mkdirs();
+        Path directory = Path.of("").toAbsolutePath().resolve("src").resolve("integrationTest").resolve("resources").resolve("bulkimport")
+                .resolve("importhandler").resolve("savings");
+        if (!directory.toFile().exists()) {
+            directory.toFile().mkdirs();
         }
-        File file = new File(directory + File.separator + "Savings.xls");
-        OutputStream outputStream = new FileOutputStream(file);
-        workbook.write(outputStream);
-        outputStream.close();
+        File file = directory.resolve("Savings.xls").toFile();
+        try (OutputStream outputStream = Files.newOutputStream(file.toPath())) {
+            workbook.write(outputStream);
+        }
 
         String importDocumentId = savingsAccountHelper.importSavingsTemplate(file);
         file.delete();
@@ -186,17 +184,16 @@ public class SavingsImportHandlerTest {
         Thread.sleep(1000);
 
         // check status column of output excel
-        String location = LocalContentStorageUtil.path(savingsAccountHelper.getOutputTemplateLocation(importDocumentId));
-        FileInputStream fileInputStream = new FileInputStream(location);
-        Workbook wb = new HSSFWorkbook(fileInputStream);
-        Sheet sheet = wb.getSheet(TemplatePopulateImportConstants.SAVINGS_ACCOUNTS_SHEET_NAME);
-        Row row = sheet.getRow(1);
+        try (Workbook wb = BulkImportOutputTemplateHelper.waitForWorkbook(
+                () -> savingsAccountHelper.downloadOutputTemplate(importDocumentId),
+                TemplatePopulateImportConstants.SAVINGS_ACCOUNTS_SHEET_NAME, 1, SavingsConstants.STATUS_COL)) {
+            Sheet sheet = wb.getSheet(TemplatePopulateImportConstants.SAVINGS_ACCOUNTS_SHEET_NAME);
+            Row row = sheet.getRow(1);
 
-        LOG.info("Output location: {}", location);
-        LOG.info("Failure reason column: {}", row.getCell(SavingsConstants.STATUS_COL).getStringCellValue());
+            LOG.info("Failure reason column: {}", row.getCell(SavingsConstants.STATUS_COL).getStringCellValue());
 
-        Assertions.assertEquals("Imported", row.getCell(SavingsConstants.STATUS_COL).getStringCellValue());
-        wb.close();
+            Assertions.assertEquals("Imported", row.getCell(SavingsConstants.STATUS_COL).getStringCellValue());
+        }
     }
 
     private void safeNumericValueSetter(Row targetRow, int targetColId, Sheet sourceSheet, int rowId, int colId) {

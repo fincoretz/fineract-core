@@ -22,10 +22,12 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.RETURNS_MOCKS;
 import static org.mockito.Mockito.mock;
 
+import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.util.List;
 import liquibase.change.custom.CustomTaskChange;
 import okhttp3.OkHttpClient;
+import org.apache.fineract.cob.internal.TestData;
 import org.apache.fineract.infrastructure.core.config.FineractProperties;
 import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseIndependentQueryService;
@@ -39,7 +41,6 @@ import org.apache.fineract.infrastructure.core.service.migration.TenantDatabaseS
 import org.apache.fineract.infrastructure.core.service.migration.TenantDatabaseUpgradeService;
 import org.apache.fineract.infrastructure.core.service.tenant.TenantDetailsService;
 import org.apache.fineract.infrastructure.dataqueries.service.GenericDataService;
-import org.apache.fineract.infrastructure.jobs.ScheduledJobRunnerConfig;
 import org.apache.fineract.infrastructure.jobs.service.JobRegisterService;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -63,7 +64,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
@@ -83,16 +83,15 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EnableTransactionManagement
 @EnableWebSecurity
 @EnableConfigurationProperties({ FineractProperties.class, LiquibaseProperties.class })
-@ComponentScan(basePackages = "org.apache.fineract", excludeFilters = {
-        @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = ScheduledJobRunnerConfig.class) })
+@ComponentScan(basePackages = "org.apache.fineract")
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @PropertySource("classpath:application-test.properties")
 public class TestConfiguration {
 
     @Bean
-    public TenantDataSourceFactory tenantDataSourceFactory(DatabasePasswordEncryptor databasePasswordEncryptor) {
-        return new TenantDataSourceFactory(null, databasePasswordEncryptor) {
+    public TenantDataSourceFactory tenantDataSourceFactory(HikariConfig hikariConfig, DatabasePasswordEncryptor databasePasswordEncryptor) {
+        return new TenantDataSourceFactory(hikariConfig, null, databasePasswordEncryptor) {
 
             @Override
             public HikariDataSource create(FineractPlatformTenant tenant) {
@@ -106,6 +105,11 @@ public class TestConfiguration {
     public HikariDataSource tenantDataSource() {
         HikariDataSource mockDataSource = mock(HikariDataSource.class, RETURNS_MOCKS);
         return mockDataSource;
+    }
+
+    @Bean
+    public TestData testData() {
+        return mock(TestData.class);
     }
 
     /**

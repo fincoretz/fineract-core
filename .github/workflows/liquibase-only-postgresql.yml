@@ -2,6 +2,9 @@ name: Fineract Liquibase Only mode - PostgreSQL
 
 on:
   workflow_call:
+    secrets:
+      DEVELOCITY_ACCESS_KEY:
+        required: false
 
 permissions:
   contents: read
@@ -9,7 +12,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     services:
       postgresql:
@@ -19,7 +22,7 @@ jobs:
         env:
           POSTGRES_USER: root
           POSTGRES_PASSWORD: postgres
-        options: --health-cmd="pg_isready -q -d postgres -U root" --health-interval=5s --health-timeout=2s --health-retries=3
+        options: --health-cmd="pg_isready -q -d postgres -U root" --health-interval=5s --health-timeout=2s --health-retries=12
 
     env:
       TZ: Asia/Kolkata
@@ -33,7 +36,7 @@ jobs:
           distribution: 'zulu'
 
       - name: Download workspace
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: fineract-workspace-${{ github.run_id }}
           path: .
@@ -42,7 +45,7 @@ jobs:
         run: tar -xf fineract-workspace.tar
 
       - name: Setup Gradle and Validate Wrapper
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+        uses: gradle/actions/setup-gradle@5e2ebd065dc2488b7a6ad670704656cbbe1e8f60 # v6.1.1
         with:
           validate-wrappers: true
 

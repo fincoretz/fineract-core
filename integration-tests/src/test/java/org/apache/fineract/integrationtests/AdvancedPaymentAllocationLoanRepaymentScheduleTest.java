@@ -445,6 +445,61 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         });
     }
 
+    // UC4b: Repayment template returns next unpaid installment amount after partial repayment
+    // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
+    // 1. Disburse the loan (500, 3 installments of 125 + 1 down payment of 125)
+    // 2. First installment (down payment) is auto-paid on disbursement
+    // 3. Make a repayment that fully pays installment 2
+    // 4. Assert repayment template points to installment 3 (next unpaid), not installment 2 (already paid)
+    @Test
+    public void repaymentTemplateReturnsNextUnpaidInstallmentAmount() {
+        runAt("15 February 2023", () -> {
+            final PostLoansResponse loanResponse = applyForLoanApplication(client.getClientId(), commonLoanProductId,
+                    BigDecimal.valueOf(500.0), 45, 15, 3, BigDecimal.ZERO, "01 January 2023", "01 January 2023");
+
+            loanTransactionHelper.approveLoan(loanResponse.getLoanId(),
+                    new PostLoansLoanIdRequest().approvedLoanAmount(BigDecimal.valueOf(500)).dateFormat(DATETIME_PATTERN)
+                            .approvedOnDate("01 January 2023").locale("en"));
+
+            loanTransactionHelper.disburseLoan(loanResponse.getLoanId(),
+                    new PostLoansLoanIdRequest().actualDisbursementDate("01 January 2023").dateFormat(DATETIME_PATTERN)
+                            .transactionAmount(BigDecimal.valueOf(500.00)).locale("en"));
+
+            // Verify initial state: down payment (installment 1) already paid, remaining 3 installments outstanding
+            GetLoansLoanIdResponse loanDetails = loanTransactionHelper.getLoanDetails(loanResponse.getLoanId());
+            validateLoanSummaryBalances(loanDetails, 375.0, 125.0, 375.0, 125.0, null);
+            validateRepaymentPeriod(loanDetails, 1, 125.0, 125.0, 0.0, 0.0, 0.0);
+            validateRepaymentPeriod(loanDetails, 2, 125.0, 0.0, 125.0, 0.0, 0.0);
+            validateRepaymentPeriod(loanDetails, 3, 125.0, 0.0, 125.0, 0.0, 0.0);
+            validateRepaymentPeriod(loanDetails, 4, 125.0, 0.0, 125.0, 0.0, 0.0);
+            assertTrue(loanDetails.getStatus().getActive());
+
+            // Fully pay installment 2
+            loanTransactionHelper.makeLoanRepayment(loanResponse.getLoanId(), new PostLoansLoanIdTransactionsRequest()
+                    .dateFormat(DATETIME_PATTERN).transactionDate("16 January 2023").locale("en").transactionAmount(125.0));
+
+            loanDetails = loanTransactionHelper.getLoanDetails(loanResponse.getLoanId());
+            validateLoanSummaryBalances(loanDetails, 250.0, 250.0, 250.0, 250.0, null);
+            validateRepaymentPeriod(loanDetails, 1, 125.0, 125.0, 0.0, 0.0, 0.0);
+            validateRepaymentPeriod(loanDetails, 2, 125.0, 125.0, 0.0, 0.0, 0.0);
+            validateRepaymentPeriod(loanDetails, 3, 125.0, 0.0, 125.0, 0.0, 0.0);
+            validateRepaymentPeriod(loanDetails, 4, 125.0, 0.0, 125.0, 0.0, 0.0);
+            assertTrue(loanDetails.getStatus().getActive());
+
+            // Repayment template must point to installment 3 (next unpaid), not installment 2 (fully paid)
+            // Before the fix, this would return 0.0 because the query always picked the lowest installment
+            // number with outstanding balance, which after partial repayment could be a fully satisfied one
+            final GetLoansLoanIdTransactionsTemplateResponse transactionTemplate = loanTransactionHelper
+                    .retrieveTransactionTemplate(loanResponse.getLoanId(), "repayment", DATETIME_PATTERN, "16 January 2023", LOCALE);
+            assertNotNull(transactionTemplate);
+            assertEquals(125.0, transactionTemplate.getAmount());
+            assertEquals(125.0, transactionTemplate.getPrincipalPortion());
+            assertEquals(0.0, transactionTemplate.getInterestPortion());
+            assertEquals(0.0, transactionTemplate.getFeeChargesPortion());
+            assertEquals(0.0, transactionTemplate.getPenaltyChargesPortion());
+        });
+    }
+
     // UC5: Refund past due
     // ADVANCED_PAYMENT_ALLOCATION_STRATEGY
     // 1. Disburse the loan
@@ -4681,9 +4736,7 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         // Not Due yet
         runAt("30 January 2024", () -> {
             // Generate the Accruals
-            final PeriodicAccrualAccountingHelper periodicAccrualAccountingHelper = new PeriodicAccrualAccountingHelper(requestSpec,
-                    responseSpec);
-            periodicAccrualAccountingHelper.runPeriodicAccrualAccounting("30 January 2024");
+            PeriodicAccrualAccountingHelper.runPeriodicAccrualAccounting("30 January 2024");
 
             GetLoansLoanIdResponse loanDetails = loanTransactionHelper.getLoanDetails(createdLoanId.get());
             assertEquals(BigDecimal.ZERO, loanDetails.getSummary().getTotalUnpaidPayableDueInterest().stripTrailingZeros());
@@ -4698,9 +4751,7 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
 
         runAt("31 January 2024", () -> {
             // Generate the Accruals
-            final PeriodicAccrualAccountingHelper periodicAccrualAccountingHelper = new PeriodicAccrualAccountingHelper(requestSpec,
-                    responseSpec);
-            periodicAccrualAccountingHelper.runPeriodicAccrualAccounting("31 January 2024");
+            PeriodicAccrualAccountingHelper.runPeriodicAccrualAccounting("31 January 2024");
 
             GetLoansLoanIdResponse loanDetails = loanTransactionHelper.getLoanDetails(createdLoanId.get());
             assertEquals(BigDecimal.ZERO, loanDetails.getSummary().getTotalUnpaidPayableDueInterest().stripTrailingZeros());
@@ -4709,9 +4760,7 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
 
         runAt("1 February 2024", () -> {
             // Generate the Accruals
-            final PeriodicAccrualAccountingHelper periodicAccrualAccountingHelper = new PeriodicAccrualAccountingHelper(requestSpec,
-                    responseSpec);
-            periodicAccrualAccountingHelper.runPeriodicAccrualAccounting("1 February 2024");
+            PeriodicAccrualAccountingHelper.runPeriodicAccrualAccounting("1 February 2024");
 
             GetLoansLoanIdResponse loanDetails = loanTransactionHelper.getLoanDetails(createdLoanId.get());
             assertEquals(new BigDecimal("0.12"), loanDetails.getSummary().getTotalUnpaidPayableDueInterest().stripTrailingZeros());
@@ -4720,9 +4769,7 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
 
         // Not Due and Due Interest
         runAt("20 February 2024", () -> {
-            final PeriodicAccrualAccountingHelper periodicAccrualAccountingHelper = new PeriodicAccrualAccountingHelper(requestSpec,
-                    responseSpec);
-            periodicAccrualAccountingHelper.runPeriodicAccrualAccounting("20 February 2024");
+            PeriodicAccrualAccountingHelper.runPeriodicAccrualAccounting("20 February 2024");
 
             GetLoansLoanIdResponse loanDetails = loanTransactionHelper.getLoanDetails(createdLoanId.get());
             assertEquals(new BigDecimal("0.12"), loanDetails.getSummary().getTotalUnpaidPayableDueInterest().stripTrailingZeros());
@@ -4783,9 +4830,7 @@ public class AdvancedPaymentAllocationLoanRepaymentScheduleTest extends BaseLoan
         // First day on First Period, then TotalUnpaidPayableDueInterest = 0 and TotalUnpaidPayableNotDueInterest = 3
         runAt("2 January 2024", () -> {
             // Generate the Accruals
-            final PeriodicAccrualAccountingHelper periodicAccrualAccountingHelper = new PeriodicAccrualAccountingHelper(requestSpec,
-                    responseSpec);
-            periodicAccrualAccountingHelper.runPeriodicAccrualAccounting("2 January 2024");
+            PeriodicAccrualAccountingHelper.runPeriodicAccrualAccounting("2 January 2024");
 
             GetLoansLoanIdResponse loanDetails = loanTransactionHelper.getLoanDetails(createdLoanId.get());
             assertEquals(BigDecimal.ZERO, loanDetails.getSummary().getTotalUnpaidPayableDueInterest().stripTrailingZeros());

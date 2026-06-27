@@ -155,6 +155,10 @@ public class LoanTransactionHelper {
         this.paymentTypeHelper = new PaymentTypeHelper();
     }
 
+    public static LocalDate getMaxTransactionDateOfActiveLoans() {
+        return Calls.ok(FineractClientHelper.getFineractClient().legacy.getMaxTransactionDateOfActiveLoans());
+    }
+
     // TODO: Rewrite to use fineract-client instead!
     // Example: org.apache.fineract.integrationtests.common.loans.LoanTransactionHelper.disburseLoan(java.lang.Long,
     // org.apache.fineract.client.models.PostLoansLoanIdRequest)
@@ -2729,6 +2733,13 @@ public class LoanTransactionHelper {
         requestSpec.header(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN);
         return Utils.performServerOutputTemplateLocationGet(requestSpec, responseSpec,
                 "/fineract-provider/api/v1/imports/getOutputTemplateLocation" + "?" + Utils.TENANT_IDENTIFIER, importDocumentId);
+    }
+
+    @Deprecated(forRemoval = true)
+    public byte[] downloadOutputTemplate(final String importDocumentId) {
+        requestSpec.header(HttpHeaders.CONTENT_TYPE, "application/vnd.ms-excel");
+        return Utils.performServerOutputTemplateDownloadGet(requestSpec, responseSpec,
+                "/fineract-provider/api/v1/imports/downloadOutputTemplate" + "?" + Utils.TENANT_IDENTIFIER, importDocumentId);
     }
 
     // TODO: Rewrite to use fineract-client instead!

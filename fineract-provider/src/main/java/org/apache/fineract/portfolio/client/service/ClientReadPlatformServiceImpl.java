@@ -62,9 +62,11 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ClientReadPlatformServiceImpl implements ClientReadPlatformService {
 
     private final JdbcTemplate jdbcTemplate;
@@ -192,6 +194,11 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
         if (searchParameters.hasLegalForm()) {
             paramList.add(searchParameters.getLegalForm());
             extraCriteria += " and c.legal_form_enum = ? ";
+        }
+
+        if (searchParameters.hasStaffId()) {
+            paramList.add(searchParameters.getStaffId());
+            extraCriteria += " and c.staff_id = ? ";
         }
 
         if (StringUtils.isNotBlank(extraCriteria)) {

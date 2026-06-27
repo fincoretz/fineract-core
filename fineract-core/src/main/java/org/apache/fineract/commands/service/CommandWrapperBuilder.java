@@ -74,6 +74,8 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DISBURSE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DISBURSETOSAVINGS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DISBURSEWITHOUTAUTODOWNPAYMENT;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DISCOUNTFEE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DISCOUNTFEEADJUSTMENT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DOWNPAYMENT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_ENABLE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_EXECUTE;
@@ -165,7 +167,6 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CODE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CODEVALUE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_COLLATERAL;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_COLLATERAL_PRODUCT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_COLLECTIONSHEET;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CONFIGURATION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CREDITBUREAU_CONFIGURATION;
@@ -197,7 +198,6 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_GSIMACCOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_GUARANTOR;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_HOLIDAY;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_HOOK;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INLINE_JOB;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INTEREST_PAUSE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_JOURNALENTRY;
@@ -236,14 +236,13 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TAXCOMPONENT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TAXGROUP;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TELLER;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TEMPLATE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TWOFACTOR_ACCESSTOKEN;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TWOFACTOR_CONFIGURATION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_USER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WAIVECHARGE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKINGCAPITALLOAN;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKINGCAPITALLOANCHARGE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKINGCAPITALLOANPRODUCT;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKINGDAYS;
 import static org.apache.fineract.useradministration.service.AppUserConstants.PASSWORD;
 import static org.apache.fineract.useradministration.service.AppUserConstants.REPEAT_PASSWORD;
 
@@ -671,43 +670,11 @@ public class CommandWrapperBuilder {
         return this;
     }
 
-    public CommandWrapperBuilder createHook() {
-        this.actionName = ACTION_CREATE;
-        this.entityName = ENTITY_HOOK;
-        this.entityId = null;
-        this.href = "/hooks/template";
-        return this;
-    }
-
-    public CommandWrapperBuilder updateHook(final Long hookId) {
-        this.actionName = ACTION_UPDATE;
-        this.entityName = ENTITY_HOOK;
-        this.entityId = hookId;
-        this.href = "/hooks/" + hookId;
-        return this;
-    }
-
-    public CommandWrapperBuilder deleteHook(final Long hookId) {
-        this.actionName = ACTION_DELETE;
-        this.entityName = ENTITY_HOOK;
-        this.entityId = hookId;
-        this.href = "/hooks/" + hookId;
-        return this;
-    }
-
     public CommandWrapperBuilder createCharge() {
         this.actionName = ACTION_CREATE;
         this.entityName = ENTITY_CHARGE;
         this.entityId = null;
         this.href = "/charges/template";
-        return this;
-    }
-
-    public CommandWrapperBuilder createCollateral() {
-        this.actionName = ACTION_CREATE;
-        this.entityId = null;
-        this.entityName = ENTITY_COLLATERAL_PRODUCT;
-        this.href = "/collateral-product";
         return this;
     }
 
@@ -880,6 +847,31 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder discountFeeWorkingCapitalLoanTransaction(final Long loanId) {
+        this.actionName = ACTION_DISCOUNTFEE;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions?command=discountFee";
+        return this;
+    }
+
+    public CommandWrapperBuilder discountFeeAdjustmentWorkingCapitalLoanTransaction(final Long loanId) {
+        this.actionName = ACTION_DISCOUNTFEEADJUSTMENT;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions?command=discountFeeAdjustment";
+        return this;
+    }
+
+    public CommandWrapperBuilder undoWorkingCapitalLoanTransaction(final Long loanId, final Long transactionId) {
+        this.actionName = ACTION_UNDO;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = transactionId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions/" + transactionId + "?command=undo";
+        return this;
+    }
+
     public CommandWrapperBuilder createWorkingCapitalLoanDelinquencyAction(final Long workingCapitalLoanId) {
         this.actionName = "CREATE";
         this.entityName = "WC_DELINQUENCY_ACTION";
@@ -901,6 +893,7 @@ public class CommandWrapperBuilder {
         this.actionName = ACTION_REPAYMENT;
         this.entityName = ENTITY_WORKINGCAPITALLOAN;
         this.entityId = loanId;
+        this.loanId = loanId;
         this.href = "/working-capital-loans/" + loanId + "/transactions?command=repayment";
         return this;
     }
@@ -910,6 +903,14 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_WORKINGCAPITALLOAN;
         this.entityId = loanId;
         this.href = "/working-capital-loans/" + loanId + "/transactions?command=creditBalanceRefund";
+        return this;
+    }
+
+    public CommandWrapperBuilder updatePeriodPaymentRateWorkingCapitalLoanApplication(final Long loanId) {
+        this.actionName = "UPDATERATE";
+        this.entityName = "WORKINGCAPITALLOAN";
+        this.entityId = loanId;
+        this.href = "/workingcapitalloans/" + loanId;
         return this;
     }
 
@@ -1138,6 +1139,14 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder createWorkingCapitalLoanCharge(final Long loanId) {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_WORKINGCAPITALLOANCHARGE;
+        this.loanId = loanId;
+        this.href = "/loans/" + loanId + "/charges";
+        return this;
+    }
+
     public CommandWrapperBuilder updateLoanCharge(final Long loanId, final Long loanChargeId) {
         this.actionName = ACTION_UPDATE;
         this.entityName = ENTITY_LOANCHARGE;
@@ -1229,6 +1238,15 @@ public class CommandWrapperBuilder {
         this.entityId = null;
         this.loanId = loanId;
         this.href = "/loans/" + loanId + "/transactions/template?command=goodwillcredit";
+        return this;
+    }
+
+    public CommandWrapperBuilder goodwillCreditWorkingCapitalLoanTransaction(final Long loanId) {
+        this.actionName = ACTION_GOODWILLCREDIT;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions/template?command=goodwillcredit";
         return this;
     }
 
@@ -2285,14 +2303,6 @@ public class CommandWrapperBuilder {
         return this;
     }
 
-    public CommandWrapperBuilder updateCollateralProduct(final Long collateralId) {
-        this.actionName = ACTION_UPDATE;
-        this.entityName = ENTITY_COLLATERAL_PRODUCT;
-        this.entityId = collateralId;
-        this.href = "/collateral-management/" + collateralId;
-        return this;
-    }
-
     public CommandWrapperBuilder updateClientCollateralProduct(final Long clientId, final Long collateralId) {
         this.actionName = ACTION_UPDATE;
         this.entityName = ENTITY_CLIENT_COLLATERAL_PRODUCT;
@@ -2317,14 +2327,6 @@ public class CommandWrapperBuilder {
         this.entityId = collateralId;
         this.loanId = loanId;
         this.href = "/loans/" + loanId + "/collaterals/" + collateralId;
-        return this;
-    }
-
-    public CommandWrapperBuilder deleteCollateralProduct(final Long collateralId) {
-        this.actionName = ACTION_DELETE;
-        this.entityName = ENTITY_COLLATERAL_PRODUCT;
-        this.entityId = collateralId;
-        this.href = "/collateral-management/" + collateralId;
         return this;
     }
 
@@ -2502,30 +2504,6 @@ public class CommandWrapperBuilder {
         this.entityId = clientId;
         this.clientId = clientId;
         this.href = "/clients/" + clientId + "?command=unassignStaff";
-        return this;
-    }
-
-    public CommandWrapperBuilder createTemplate() {
-        this.actionName = ACTION_CREATE;
-        this.entityName = ENTITY_TEMPLATE;
-        this.entityId = null;
-        this.href = "/templates";
-        return this;
-    }
-
-    public CommandWrapperBuilder updateTemplate(final Long templateId) {
-        this.actionName = ACTION_UPDATE;
-        this.entityName = ENTITY_TEMPLATE;
-        this.entityId = templateId;
-        this.href = "/templates/" + templateId;
-        return this;
-    }
-
-    public CommandWrapperBuilder deleteTemplate(final Long templateId) {
-        this.actionName = ACTION_DELETE;
-        this.entityName = ENTITY_TEMPLATE;
-        this.entityId = templateId;
-        this.href = "/templates/" + templateId;
         return this;
     }
 
@@ -3142,13 +3120,6 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_ENTITYMAPPING;
         this.entityId = mapId;
         this.href = "/entitytoentitymapping/" + mapId;
-        return this;
-    }
-
-    public CommandWrapperBuilder updateWorkingDays() {
-        this.actionName = ACTION_UPDATE;
-        this.entityName = ENTITY_WORKINGDAYS;
-        this.href = "/workingdays/";
         return this;
     }
 
@@ -4096,6 +4067,14 @@ public class CommandWrapperBuilder {
         this.entityId = accountId;
         this.savingsId = accountId;
         this.href = "/savingsaccounts/" + accountId;
+        return this;
+    }
+
+    public CommandWrapperBuilder undoAccountTransfer(final Long transferId) {
+        this.actionName = ACTION_UNDO;
+        this.entityName = ENTITY_ACCOUNTTRANSFER;
+        this.entityId = transferId;
+        this.href = "/accounttransfers";
         return this;
     }
 }

@@ -127,6 +127,12 @@ public class WorkingCapitalLoanProductUpdateUtil {
             changes.put(WorkingCapitalLoanProductConstants.delinquencyGraceDaysParamName, newValue);
             relatedDetail.setDelinquencyGraceDays(newValue);
         }
+        if (command.isChangeInIntegerParameterNamed(WorkingCapitalLoanProductConstants.breachGraceDaysParamName,
+                relatedDetail.getBreachGraceDays())) {
+            final Integer newValue = command.integerValueOfParameterNamed(WorkingCapitalLoanProductConstants.breachGraceDaysParamName);
+            changes.put(WorkingCapitalLoanProductConstants.breachGraceDaysParamName, newValue);
+            relatedDetail.setBreachGraceDays(newValue);
+        }
         final String currentDelinquencyStartType = (relatedDetail.getDelinquencyStartType() != null)
                 ? relatedDetail.getDelinquencyStartType().name()
                 : null;
@@ -189,7 +195,7 @@ public class WorkingCapitalLoanProductUpdateUtil {
                 updateBooleanField(allowOverrides, WorkingCapitalLoanProductConstants.breachOverridableParamName, config::setBreach,
                         config::isBreach, changes);
                 updateBooleanField(allowOverrides, WorkingCapitalLoanProductConstants.discountDefaultOverridableParamName,
-                        config::setDiscountDefault, config::isDiscountDefault, changes);
+                        config::setDiscountDefaultOverridable, config::isDiscountDefaultOverridable, changes);
                 updateBooleanField(allowOverrides, WorkingCapitalLoanProductConstants.periodPaymentFrequencyOverridableParamName,
                         config::setPeriodPaymentFrequency, config::isPeriodPaymentFrequency, changes);
                 updateBooleanField(allowOverrides, WorkingCapitalLoanProductConstants.periodPaymentFrequencyTypeOverridableParamName,

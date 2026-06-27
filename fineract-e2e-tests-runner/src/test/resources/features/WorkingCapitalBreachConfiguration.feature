@@ -1,3 +1,4 @@
+@WorkingCapital
 @WorkingCapitalBreachManagementFeature
 Feature: Working Capital Breach Configuration
 
@@ -15,17 +16,17 @@ Feature: Working Capital Breach Configuration
     Then Admin failed to create a new WC Breach for field "<wcb_field_name_invalid>" with invalid data <wcb_field_value_invalid> results with an error <wcb_error_message>
 
     Examples:
-      | wcb_field_name_invalid       | wcb_field_value_invalid | wcb_error_message                                                                 |
-      | name                         | "null"                  | The parameter `name` is mandatory.                                                |
-      | name                         | ""                      | The parameter `name` is mandatory.                                                |
-      | breachFrequency              | "null"                  | The parameter `breachFrequency` is mandatory.                                     |
-      | breachFrequency              | "0"                     | The parameter `breachFrequency` must be greater than 0.                           |
-      | breachFrequencyType          | "null"                  | The parameter `breachFrequencyType` is mandatory.                                 |
-      | breachFrequencyType          | "INVALID"               | The parameter `breachFrequencyType` must be one of [ DAYS, WEEKS, MONTHS, YEARS ] .      |
-      | breachAmountCalculationType  | "null"                  | The parameter `breachAmountCalculationType` is mandatory.                         |
-      | breachAmountCalculationType  | "INVALID"               | The parameter `breachAmountCalculationType` must be one of [ PERCENTAGE, FLAT ] . |
-      | breachAmount                 | "null"                  | The parameter `breachAmount` is mandatory.                                        |
-      | breachAmount                 | "-1"                    | The parameter `breachAmount` must be greater than or equal to 0.                  |
+      | wcb_field_name_invalid       | wcb_field_value_invalid | wcb_error_message                                                                   |
+      | name                         | "null"                  | The parameter `name` is mandatory.                                                  |
+      | name                         | ""                      | The parameter `name` is mandatory.                                                  |
+      | breachFrequency              | "null"                  | The parameter `breachFrequency` is mandatory.                                       |
+      | breachFrequency              | "0"                     | The parameter `breachFrequency` must be greater than 0.                             |
+      | breachFrequencyType          | "null"                  | The parameter `breachFrequencyType` is mandatory.                                   |
+      | breachFrequencyType          | "INVALID"               | The parameter `breachFrequencyType` must be one of [ DAYS, WEEKS, MONTHS, YEARS ] . |
+      | breachAmountCalculationType  | "null"                  | The parameter `breachAmountCalculationType` is mandatory.                           |
+      | breachAmountCalculationType  | "INVALID"               | The parameter `breachAmountCalculationType` must be one of [ PERCENTAGE, FLAT ] .   |
+      | breachAmount                 | "null"                  | The parameter `breachAmount` is mandatory.                                          |
+      | breachAmount                 | "-1"                    | The parameter `breachAmount` must be greater than or equal to 0.                    |
 
   @TestRailId:C74475
   Scenario: Verify Working Capital Breach Configuration create validation with existing name outcomes with error - UC3
@@ -78,3 +79,18 @@ Feature: Working Capital Breach Configuration
       | wcb_field_name_incorrect_value |
       | 565465                         |
       | 0                              |
+
+  @TestRailId:C78842
+  Scenario: Verify deleting WC Breach assigned to a Working Capital Loan Product is rejected with entity-linked error - UC9.1
+    When Admin creates WC Breach With Values
+    When Admin creates a new Working Capital Loan Product with existing WC Breach
+    Then Admin failed to delete WC Breach that is assigned to a Working Capital Loan Product
+    Then Admin deletes a Working Capital Loan Product
+    When Admin deletes WC Breach With Values
+
+  @TestRailId:C78843
+  Scenario: Verify deleting Working Capital Breach Configuration that is still assigned to WC loan account failure - UC9.2
+    When Admin sets the business date to "01 January 2027"
+    And Admin creates a client with random data
+    And Admin creates working capital loan with with breach on "01 January 2027" date
+    Then Admin failed to delete WC Breach that is assigned to a Working Capital Loan Account

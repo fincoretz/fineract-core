@@ -19,15 +19,15 @@
 package org.apache.fineract.cob.workingcapitalloan;
 
 import static org.apache.fineract.cob.workingcapitalloan.WorkingCapitalLoanCOBConstant.WORKING_CAPITAL_JOB_NAME;
-import static org.apache.fineract.cob.workingcapitalloan.WorkingCapitalLoanCOBConstant.WORKING_CAPITAL_LOAN_COB_BUSINESS_STEP;
-import static org.apache.fineract.cob.workingcapitalloan.WorkingCapitalLoanCOBConstant.WORKING_CAPITAL_LOAN_COB_FLOW;
 import static org.apache.fineract.cob.workingcapitalloan.WorkingCapitalLoanCOBConstant.WORKING_CAPITAL_LOAN_COB_WORKER_STEP;
 
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.cob.COBBusinessStepService;
+import org.apache.fineract.cob.common.InitialisationTasklet;
+import org.apache.fineract.cob.common.ResetContextTasklet;
 import org.apache.fineract.cob.conditions.BatchWorkerCondition;
 import org.apache.fineract.cob.domain.LockingService;
-import org.apache.fineract.cob.domain.WorkingCapitalLoanAccountLock;
+import org.apache.fineract.cob.listener.CobWorkerStepListener;
 import org.apache.fineract.cob.loan.ContextAwareTaskDecorator;
 import org.apache.fineract.cob.service.BeforeStepLockingItemReaderHelper;
 import org.apache.fineract.infrastructure.core.config.FineractProperties;
@@ -37,13 +37,10 @@ import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoa
 import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanRepository;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.StepScope;
-import org.springframework.batch.core.job.builder.FlowBuilder;
-import org.springframework.batch.core.job.flow.Flow;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.SimpleStepBuilder;
-import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.integration.partition.RemotePartitioningWorkerStepBuilderFactory;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
@@ -59,39 +56,32 @@ import org.springframework.transaction.support.TransactionTemplate;
 @RequiredArgsConstructor
 public class WorkingCapitalLoanCOBWorkerConfiguration {
 
+    private final JobRepository jobRepository;
     private final RemotePartitioningWorkerStepBuilderFactory stepBuilderFactory;
     private final MessageChannel inboundRequests;
-    private final JobRepository jobRepository;
     private final PropertyService propertyService;
     private final PlatformTransactionManager transactionManager;
-    private final TransactionTemplate transactionTemplate;
-    private final LockingService<WorkingCapitalLoanAccountLock> wpcLoanLockingService;
+    @Qualifier("batchJdbcTransactionManager")
+    private final PlatformTransactionManager batchJdbcTransactionManager;
+    @Qualifier("batchJdbcTransactionTemplate")
+    private final TransactionTemplate batchJdbcTransactionTemplate;
+    @Qualifier("workingCapitalLoanLockingService")
+    private final LockingService wpcLoanLockingService;
     private final FineractProperties fineractProperties;
     private final WorkingCapitalLoanRetrieveIdService retrieveIdService;
     private final WorkingCapitalLoanRepository workingCapitalLoanRepository;
-
-    @Bean(WORKING_CAPITAL_LOAN_COB_FLOW)
-    public Flow workingCapitalLoanCOBFlow(Step initialisationStep, Step applyWorkingCapitalLockStep, Step workingCapitalLoanCOBBusinessStep,
-            Step resetContextStep) {
-        return new FlowBuilder<Flow>(WORKING_CAPITAL_LOAN_COB_FLOW).start(initialisationStep).next(applyWorkingCapitalLockStep)
-                .next(workingCapitalLoanCOBBusinessStep).next(resetContextStep).build();
-    }
+    @Qualifier("initialiseContext")
+    private final InitialisationTasklet initialisationTasklet;
+    @Qualifier("resetContext")
+    private final ResetContextTasklet resetContextTasklet;
 
     @Bean(WORKING_CAPITAL_LOAN_COB_WORKER_STEP)
-    public Step workingCapitalLoanCOBWorkerStep(Flow workingCapitalLoanCOBFlow) {
-        return stepBuilderFactory.get(WORKING_CAPITAL_LOAN_COB_WORKER_STEP).inputChannel(inboundRequests).flow(workingCapitalLoanCOBFlow)
-                .build();
-    }
-
-    @Bean(WORKING_CAPITAL_LOAN_COB_BUSINESS_STEP)
-    @StepScope
-    public Step workingCapitalLoanCOBBusinessStep(@Value("#{stepExecutionContext['partition']}") String partitionName,
-            TaskExecutor workingCapitalCobTaskExecutor, COBBusinessStepService cobBusinessStepService) {
-        SimpleStepBuilder<WorkingCapitalLoan, WorkingCapitalLoan> stepBuilder = new StepBuilder("Loan Business - Step:" + partitionName,
-                jobRepository)
+    public Step workingCapitalLoanCOBWorkerStep(final COBBusinessStepService cobBusinessStepService) {
+        final SimpleStepBuilder<WorkingCapitalLoan, WorkingCapitalLoan> stepBuilder = stepBuilderFactory
+                .get(WORKING_CAPITAL_LOAN_COB_WORKER_STEP).inputChannel(inboundRequests)
                 .<WorkingCapitalLoan, WorkingCapitalLoan>chunk(propertyService.getChunkSize(JobName.LOAN_COB.name()), transactionManager) //
                 .reader(new WorkingCapitalLoanCOBWorkerItemReader(workingCapitalLoanRepository,
-                        new BeforeStepLockingItemReaderHelper<>(retrieveIdService, wpcLoanLockingService))) //
+                        new BeforeStepLockingItemReaderHelper(retrieveIdService, wpcLoanLockingService))) //
                 .processor(new WorkingCapitalLoanCOBWorkerItemProcessor(cobBusinessStepService)) //
                 .writer(new WorkingCapitalLoanCOBWorkerItemWriter(wpcLoanLockingService, workingCapitalLoanRepository)) //
                 .faultTolerant() //
@@ -100,13 +90,19 @@ public class WorkingCapitalLoanCOBWorkerConfiguration {
                 .skip(Exception.class) //
                 .skipLimit(propertyService.getChunkSize(WORKING_CAPITAL_JOB_NAME) + 1) //
                 .listener(workingCapitalLoanItemListener()) //
+                .listener(workingCapitalCobWorkerStepListener()) //
                 .transactionManager(transactionManager);
 
         if (propertyService.getThreadPoolMaxPoolSize(WORKING_CAPITAL_JOB_NAME) > 1) {
-            stepBuilder.taskExecutor(workingCapitalCobTaskExecutor);
+            stepBuilder.taskExecutor(workingCapitalCobTaskExecutor());
         }
 
         return stepBuilder.build();
+    }
+
+    @Bean
+    public CobWorkerStepListener workingCapitalCobWorkerStepListener() {
+        return new CobWorkerStepListener(initialisationTasklet, applyWorkingCapitalLoanLock(), resetContextTasklet);
     }
 
     @Bean
@@ -125,22 +121,23 @@ public class WorkingCapitalLoanCOBWorkerConfiguration {
         return taskExecutor;
     }
 
-    // Lock
     @Bean
     public WorkingCapitalLoanCOBWorkerItemListener workingCapitalLoanItemListener() {
-        return new WorkingCapitalLoanCOBWorkerItemListener(wpcLoanLockingService, transactionTemplate);
-    }
-
-    @Bean("applyWorkingCapitalLockStep")
-    @StepScope
-    public Step applyWorkingCapitalLockStep(@Value("#{stepExecutionContext['partition']}") String partitionName) {
-        return new StepBuilder("Apply lock - Step:" + partitionName, jobRepository)
-                .tasklet(applyWorkingCapitalLoanLock(), transactionManager).build();
+        return new WorkingCapitalLoanCOBWorkerItemListener(wpcLoanLockingService, batchJdbcTransactionTemplate);
     }
 
     @Bean
     public ApplyWorkingCapitalLoanLockTasklet applyWorkingCapitalLoanLock() {
-        return new ApplyWorkingCapitalLoanLockTasklet(fineractProperties, wpcLoanLockingService, retrieveIdService, transactionTemplate);
+        return new ApplyWorkingCapitalLoanLockTasklet(fineractProperties, wpcLoanLockingService, retrieveIdService,
+                batchJdbcTransactionTemplate);
+    }
+
+    @Bean
+    @StepScope
+    public Step applyWorkingCapitalLoanLockStep(
+            @org.springframework.beans.factory.annotation.Value("#{stepExecutionContext['partition']}") String partitionName) {
+        return new org.springframework.batch.core.step.builder.StepBuilder("Apply WC lock - Step:" + partitionName, jobRepository)
+                .tasklet(applyWorkingCapitalLoanLock(), batchJdbcTransactionManager).build();
     }
 
 }

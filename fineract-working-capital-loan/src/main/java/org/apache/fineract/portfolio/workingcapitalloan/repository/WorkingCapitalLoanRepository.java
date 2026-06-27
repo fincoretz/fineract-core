@@ -48,8 +48,6 @@ public interface WorkingCapitalLoanRepository extends JpaRepository<WorkingCapit
             LEFT JOIN FETCH wcl.fund
             LEFT JOIN FETCH wcl.loanProduct
             LEFT JOIN FETCH wcl.paymentAllocationRules
-            LEFT JOIN FETCH wcl.transactions txn
-            LEFT JOIN FETCH txn.allocation
             LEFT JOIN FETCH wcl.disbursementDetails detail
             LEFT JOIN FETCH detail.disbursedBy
             WHERE wcl.id = :id
@@ -61,8 +59,6 @@ public interface WorkingCapitalLoanRepository extends JpaRepository<WorkingCapit
             LEFT JOIN FETCH wcl.client
             LEFT JOIN FETCH wcl.fund
             LEFT JOIN FETCH wcl.loanProduct
-            LEFT JOIN FETCH wcl.transactions txn
-            LEFT JOIN FETCH txn.allocation
             WHERE wcl.externalId = :externalId
             """)
     Optional<WorkingCapitalLoan> findByExternalIdWithDetails(@Param("externalId") ExternalId externalId);
@@ -74,8 +70,6 @@ public interface WorkingCapitalLoanRepository extends JpaRepository<WorkingCapit
             LEFT JOIN FETCH wcl.fund
             LEFT JOIN FETCH wcl.loanProduct
             LEFT JOIN FETCH wcl.paymentAllocationRules
-            LEFT JOIN FETCH wcl.transactions txn
-            LEFT JOIN FETCH txn.allocation
             WHERE wcl.id IN :ids
             """)
     List<WorkingCapitalLoan> findByIdInWithFullDetails(@Param("ids") List<Long> ids);
@@ -92,7 +86,8 @@ public interface WorkingCapitalLoanRepository extends JpaRepository<WorkingCapit
     List<COBIdAndLastClosedBusinessDate> findAllLoansBehindOrNullByLoanIdsAndStatuses(@Param("cobBusinessDate") LocalDate cobBusinessDate,
             @Param("loanIds") List<Long> loanIds, @Param("loanStatuses") Collection<LoanStatus> loanStatuses);
 
-    Long findIdByExternalId(ExternalId externalId);
+    @Query("select loan.id as id from  WorkingCapitalLoan loan where loan.externalId = :externalId")
+    Long findIdByExternalId(@Param("externalId") ExternalId externalId);
 
     @Query("select loan.id, loan.lastClosedBusinessDate from WorkingCapitalLoan loan where loan.id IN :loanIds and loan.loanStatus in :loanStatuses and loan.lastClosedBusinessDate < :cobBusinessDate")
     List<COBIdAndLastClosedBusinessDate> findAllLoansBehindByLoanIdsAndStatuses(@Param("cobBusinessDate") LocalDate cobBusinessDate,

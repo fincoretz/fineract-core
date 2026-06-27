@@ -694,6 +694,17 @@ public class ExternalEventConfigurationHelper {
         savingsAccountForceWithdrawalBusinessEvent.put("enabled", false);
         defaults.add(savingsAccountForceWithdrawalBusinessEvent);
 
+        Map<String, Object> workingCapitalLoanDiscountDisbursalTransactionBusinessEvent = new HashMap<>();
+        workingCapitalLoanDiscountDisbursalTransactionBusinessEvent.put("type", "WorkingCapitalLoanDiscountFeeTransactionBusinessEvent");
+        workingCapitalLoanDiscountDisbursalTransactionBusinessEvent.put("enabled", false);
+        defaults.add(workingCapitalLoanDiscountDisbursalTransactionBusinessEvent);
+
+        Map<String, Object> workingCapitalLoanDiscountFeeAdjustmentTransactionBusinessEvent = new HashMap<>();
+        workingCapitalLoanDiscountFeeAdjustmentTransactionBusinessEvent.put("type",
+                "WorkingCapitalLoanDiscountFeeAdjustmentTransactionBusinessEvent");
+        workingCapitalLoanDiscountFeeAdjustmentTransactionBusinessEvent.put("enabled", false);
+        defaults.add(workingCapitalLoanDiscountFeeAdjustmentTransactionBusinessEvent);
+
         return defaults;
     }
 

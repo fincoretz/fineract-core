@@ -36,6 +36,8 @@ public final class CommandWrapperConstants {
     public static final String ACTION_APPROVALUNDO = "APPROVALUNDO";
     public static final String ACTION_DISBURSE = "DISBURSE";
     public static final String ACTION_DISBURSALUNDO = "DISBURSALUNDO";
+    public static final String ACTION_DISCOUNTFEE = "DISCOUNTFEE";
+    public static final String ACTION_DISCOUNTFEEADJUSTMENT = "DISCOUNTFEEADJUSTMENT";
     public static final String ACTION_ACTIVATE = "ACTIVATE";
     public static final String ACTION_CLOSE = "CLOSE";
     public static final String ACTION_WITHDRAW = "WITHDRAW";
@@ -178,7 +180,6 @@ public final class CommandWrapperConstants {
     public static final String ENTITY_CODE = "CODE";
     public static final String ENTITY_HOOK = "HOOK";
     public static final String ENTITY_CHARGE = "CHARGE";
-    public static final String ENTITY_COLLATERAL_PRODUCT = "COLLATERAL_PRODUCT";
     public static final String ENTITY_LOANPRODUCT = "LOANPRODUCT";
     public static final String ENTITY_WORKINGCAPITALLOANPRODUCT = "WORKINGCAPITALLOANPRODUCT";
     public static final String ENTITY_WORKINGCAPITALLOAN = "WORKINGCAPITALLOAN";
@@ -186,6 +187,7 @@ public final class CommandWrapperConstants {
     public static final String ENTITY_CLIENT = "CLIENT";
     public static final String ENTITY_DATATABLE = "DATATABLE";
     public static final String ENTITY_LOANCHARGE = "LOANCHARGE";
+    public static final String ENTITY_WORKINGCAPITALLOANCHARGE = "WORKINGCAPITALLOANCHARGE";
     public static final String ENTITY_REPAYMENT_WITH_POSTDATEDCHECKS = "REPAYMENT_WITH_POSTDATEDCHECKS";
     public static final String ENTITY_DISBURSEMENTDETAIL = "DISBURSEMENTDETAIL";
     public static final String ENTITY_GLIMLOAN = "GLIMLOAN";

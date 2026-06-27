@@ -2,6 +2,9 @@ name: Fineract Messaging Smoke Tests
 
 on:
   workflow_call:
+    secrets:
+      DEVELOCITY_ACCESS_KEY:
+        required: false
 
 permissions:
   contents: read
@@ -10,7 +13,7 @@ jobs:
   smoke-test:
     name: Smoke Test with ${{ matrix.messaging }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -23,6 +26,7 @@ jobs:
     env:
       DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
       IMAGE_NAME: fineract
+      DOCKER_LOG_DIR: ci-logs/smoke-${{ matrix.messaging }}
 
     steps:
       - name: Set up JDK 21
@@ -32,7 +36,7 @@ jobs:
           distribution: 'zulu'
 
       - name: Download workspace
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: fineract-workspace-${{ github.run_id }}
           path: .
@@ -41,7 +45,7 @@ jobs:
         run: tar -xf fineract-workspace.tar
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+        uses: gradle/actions/setup-gradle@5e2ebd065dc2488b7a6ad670704656cbbe1e8f60 # v6.1.1
 
       - name: Build the image
         run: ./gradlew --no-daemon --console=plain :fineract-provider:jibDockerBuild -Djib.to.image=$IMAGE_NAME -x test -x cucumber -x buildJavaSdk
@@ -78,3 +82,34 @@ jobs:
 
       - name: Run Smoke Test with Remote COB
         run: ./gradlew --no-daemon --console=plain :integration-tests:cleanTest :integration-tests:test --tests "org.apache.fineract.integrationtests.investor.externalassetowner.InitiateExternalAssetOwnerTransferTest.saleActiveLoanToExternalAssetOwnerAndBuybackADayLater" -PcargoDisabled -x buildJavaSdk
+
+      - name: Collect Docker logs
+        if: failure()
+        run: |
+          mkdir -p "$DOCKER_LOG_DIR"
+          docker ps -a > "$DOCKER_LOG_DIR/docker-ps.txt" 2>&1 || true
+          docker compose -f ${{ matrix.compose_file }} ps --all > "$DOCKER_LOG_DIR/docker-compose-ps.txt" 2>&1 || true
+          docker compose -f ${{ matrix.compose_file }} logs --no-color --timestamps > "$DOCKER_LOG_DIR/docker-compose.log" 2>&1 || true
+          docker stats --no-stream > "$DOCKER_LOG_DIR/docker-stats.txt" 2>&1 || true
+
+          docker compose -f ${{ matrix.compose_file }} ps -q | while read -r container_id; do
+            [ -n "$container_id" ] || continue
+            container_name="$(docker inspect --format '{{.Name}}' "$container_id" 2>/dev/null | sed 's#^/##; s#[^A-Za-z0-9_.-]#_#g')"
+            [ -n "$container_name" ] || container_name="$container_id"
+            docker logs --timestamps "$container_id" > "$DOCKER_LOG_DIR/${container_name}.log" 2>&1 || true
+            docker inspect "$container_id" > "$DOCKER_LOG_DIR/${container_name}.inspect.json" 2>&1 || true
+          done
+
+      - name: Upload Docker logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docker-logs-${{ matrix.messaging }}-attempt-${{ github.run_attempt }}
+          path: ci-logs/
+          if-no-files-found: ignore
+          retention-days: 5
+          compression-level: 9
+
+      - name: Clean up
+        if: always()
+        run: docker compose -f ${{ matrix.compose_file }} down -v

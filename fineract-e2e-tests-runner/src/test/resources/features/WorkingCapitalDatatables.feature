@@ -1,3 +1,4 @@
+@WorkingCapital
 @WorkingCapitalDatatablesFeature
 Feature: WorkingCapitalDatatables
 
@@ -74,7 +75,7 @@ Feature: WorkingCapitalDatatables
     When Admin sets the business date to "01 January 2026"
     And Admin creates a client with random data
     And Admin creates a working capital loan with the following data:
-      | LoanProduct | submittedOnDate | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP        | 01 January 2026 | 01 January 2026          | 9000            | 100000       | 18                | 0        |
     And A datatable for "WC_Loan" is created with the following extra columns:
       | Name    | Type   | Length | Unique | Indexed |
@@ -91,7 +92,7 @@ Feature: WorkingCapitalDatatables
     When Admin sets the business date to "01 January 2026"
     And Admin creates a client with random data
     And Admin creates a working capital loan with the following data:
-      | LoanProduct | submittedOnDate | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP        | 01 January 2026 | 01 January 2026          | 9000            | 100000       | 18                | 0        |
     And A multirow datatable for "WC_Loan" is created
     And A multirow datatable entry is created for "WC_Loan" with value "10" in column "col"
@@ -107,7 +108,7 @@ Feature: WorkingCapitalDatatables
     When Admin sets the business date to "01 January 2026"
     And Admin creates a client with random data
     And Admin creates a working capital loan with the following data:
-      | LoanProduct | submittedOnDate | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP        | 01 January 2026 | 01 January 2026          | 9000            | 100000       | 18                | 0        |
     And A datatable for "WC_Loan" is created with the following extra columns:
       | Name    | Type   | Length | Unique | Indexed |
@@ -269,8 +270,26 @@ Feature: WorkingCapitalDatatables
     When Admin sets the business date to "01 January 2026"
     And Admin creates a client with random data
     And Admin creates a working capital loan with the following data:
-      | LoanProduct | submittedOnDate | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | LoanProduct | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | WCLP        | 01 January 2026 | 01 January 2026          | 9000            | 100000       | 18                | 0        |
     And A multirow datatable for "WC_Loan" is created
     And A multirow datatable entry is created for "WC_Loan" with value "55" in column "col"
     Then Fetching the multirow datatable entry by id for "WC_Loan" returns value "55" in column "col"
+
+  @TestRailId:C85158
+  Scenario: Single-row datatable entry create with null value persists column via client JSON body
+    When Admin creates a new Working Capital Loan Product
+    And A datatable for "WC_Loan_Product" is created with the following extra columns:
+      | Name   | Type   | Length | Unique | Indexed |
+      | amount | number | 10     | false  | false   |
+    And A datatable entry is created for "WC_Loan_Product" with null in column "amount"
+    Then Fetching the datatable entry for "WC_Loan_Product" returns null in column "amount"
+
+  @TestRailId:C85159
+  Scenario: Multi-row datatable entry create with null value persists column via client JSON body
+    When Admin creates a new Working Capital Loan Product
+    And A multirow datatable for "WC_Loan_Product" is created with the following extra columns:
+      | Name   | Type   | Length | Unique | Indexed |
+      | amount | number | 10     | false  | false   |
+    And A multirow datatable entry is created for "WC_Loan_Product" with null in column "amount"
+    Then Fetching multirow datatable entries for "WC_Loan_Product" returns null in column "amount"

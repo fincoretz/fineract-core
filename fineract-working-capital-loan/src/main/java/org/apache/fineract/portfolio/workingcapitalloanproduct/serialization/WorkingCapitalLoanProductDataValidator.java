@@ -99,28 +99,35 @@ public class WorkingCapitalLoanProductDataValidator {
                     WorkingCapitalLoanProductConstants.allowAttributeOverridesParamName, //
                     WorkingCapitalLoanProductConstants.delinquencyGraceDaysParamName, //
                     WorkingCapitalLoanProductConstants.delinquencyStartTypeParamName, //
+                    WorkingCapitalLoanProductConstants.breachGraceDaysParamName, //
                     WorkingCapitalLoanProductConstants.accountingRuleParamName, //
                     WorkingCapitalLoanProductConstants.fundSourceAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.loanPortfolioAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.transfersInSuspenseAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.deferredIncomeLiabilityAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.incomeFromDiscountFeeAccountIdParamName, //
+                    WorkingCapitalLoanProductConstants.receivableFeeAccountIdParamName, //
+                    WorkingCapitalLoanProductConstants.receivablePenaltyAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.incomeFromFeeAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.incomeFromPenaltyAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.incomeFromRecoveryAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.writeOffAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.overpaymentLiabilityAccountIdParamName, //
-                    WorkingCapitalLoanProductConstants.incomeFromChargeOffInterestAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.incomeFromChargeOffFeesAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.incomeFromChargeOffPenaltyAccountIdParamName, //
-                    WorkingCapitalLoanProductConstants.incomeFromGoodwillCreditInterestAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.incomeFromGoodwillCreditFeesAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.incomeFromGoodwillCreditPenaltyAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.goodwillCreditAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.chargeOffExpenseAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.chargeOffFraudExpenseAccountIdParamName, //
                     WorkingCapitalLoanProductConstants.breachIdParamName, //
-                    WorkingCapitalLoanProductConstants.nearBreachIdParamName //
+                    WorkingCapitalLoanProductConstants.nearBreachIdParamName, //
+                    WorkingCapitalLoanProductConstants.paymentChannelToFundSourceMappingsParamName, //
+                    WorkingCapitalLoanProductConstants.feeToIncomeAccountMappingsParamName, //
+                    WorkingCapitalLoanProductConstants.penaltyToIncomeAccountMappingsParamName, //
+                    WorkingCapitalLoanProductConstants.chargeOffReasonToExpenseAccountMappingsParamName, //
+                    WorkingCapitalLoanProductConstants.writeOffReasonsToExpenseMappingsParamName, //
+                    WorkingCapitalLoanProductConstants.breachIdParamName //
             ));
 
     public void validateForCreate(final String json) {
@@ -378,6 +385,13 @@ public class WorkingCapitalLoanProductDataValidator {
                     .value(delinquencyGraceDays).ignoreIfNull().integerZeroOrGreater();
         }
 
+        if (this.fromApiJsonHelper.parameterExists(WorkingCapitalLoanProductConstants.breachGraceDaysParamName, element)) {
+            final Integer breachGraceDays = this.fromApiJsonHelper
+                    .extractIntegerNamed(WorkingCapitalLoanProductConstants.breachGraceDaysParamName, element, locale);
+            baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.breachGraceDaysParamName).value(breachGraceDays)
+                    .ignoreIfNull().integerZeroOrGreater();
+        }
+
         if (this.fromApiJsonHelper.parameterExists(WorkingCapitalLoanProductConstants.delinquencyStartTypeParamName, element)) {
             final String delinquencyStartTypeValue = this.fromApiJsonHelper
                     .extractStringNamed(WorkingCapitalLoanProductConstants.delinquencyStartTypeParamName, element);
@@ -607,6 +621,16 @@ public class WorkingCapitalLoanProductDataValidator {
                         .extractLongNamed(WorkingCapitalLoanProductConstants.incomeFromDiscountFeeAccountIdParamName, element);
                 baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.incomeFromDiscountFeeAccountIdParamName)
                         .value(incomeFromDiscountFeeAccountId).notNull().integerGreaterThanZero();
+
+                final Long receivableFeeAccountId = this.fromApiJsonHelper
+                        .extractLongNamed(WorkingCapitalLoanProductConstants.receivableFeeAccountIdParamName, element);
+                baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.receivableFeeAccountIdParamName)
+                        .value(receivableFeeAccountId).notNull().integerGreaterThanZero();
+
+                final Long receivablePenaltyAccountId = this.fromApiJsonHelper
+                        .extractLongNamed(WorkingCapitalLoanProductConstants.receivablePenaltyAccountIdParamName, element);
+                baseDataValidator.reset().parameter(WorkingCapitalLoanProductConstants.receivablePenaltyAccountIdParamName)
+                        .value(receivablePenaltyAccountId).notNull().integerGreaterThanZero();
 
                 final Long incomeFromFeeAccountId = this.fromApiJsonHelper
                         .extractLongNamed(WorkingCapitalLoanProductConstants.incomeFromFeeAccountIdParamName, element);

@@ -32,6 +32,8 @@ public interface ChargeReadPlatformService {
 
     ChargeData retrieveNewChargeDetails();
 
+    ChargeData retrieveNewChargeDetails(Long chargeAppliesTo, Long chargeTimeType);
+
     /**
      * Returns all charges that can be applied to Cients
      *
@@ -121,4 +123,6 @@ public interface ChargeReadPlatformService {
     List<ChargeData> retrieveSharesApplicableCharges();
 
     List<ChargeData> retrieveShareProductCharges(Long shareProductId);
+
+    List<ChargeData> retrieveWorkingCapitalLoanAccountApplicableCharges(Long resolvedLoanId);
 }

@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import lombok.Getter;
@@ -354,8 +355,13 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
 
     public static LoanTransaction buyDownFeeAdjustment(final Loan loan, final Money amount, final PaymentDetail paymentDetail,
             final LocalDate transactionDate, final ExternalId externalId) {
-        return new LoanTransaction(loan, loan.getOffice(), LoanTransactionType.BUY_DOWN_FEE_ADJUSTMENT, transactionDate, amount.getAmount(),
-                null, null, null, null, null, false, paymentDetail, externalId);
+        final BigDecimal buyDownFeeAdjustmentAmount = amount.getAmount();
+        return switch (loan.getLoanProductRelatedDetail().getBuyDownFeeIncomeType()) {
+            case FEE -> new LoanTransaction(loan, loan.getOffice(), LoanTransactionType.BUY_DOWN_FEE_ADJUSTMENT, transactionDate,
+                    buyDownFeeAdjustmentAmount, null, null, buyDownFeeAdjustmentAmount, null, null, false, paymentDetail, externalId);
+            case INTEREST -> new LoanTransaction(loan, loan.getOffice(), LoanTransactionType.BUY_DOWN_FEE_ADJUSTMENT, transactionDate,
+                    buyDownFeeAdjustmentAmount, null, buyDownFeeAdjustmentAmount, null, null, null, false, paymentDetail, externalId);
+        };
     }
 
     public static LoanTransaction capitalizedIncomeAmortizationAdjustment(final Loan loan, final Money amount,
@@ -1014,8 +1020,24 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
         this.amount = bigDecimal;
     }
 
-    // TODO missing hashCode(), equals(Object obj), but probably OK as long as
-    // this is never stored in a Collection.
+    @Override
+    public boolean equals(final Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof LoanTransaction other)) {
+            return false;
+        }
+        if (getId() == null || other.getId() == null) {
+            return false;
+        }
+        return Objects.equals(getId(), other.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getId());
+    }
 
     public void updateTransactionDate(final LocalDate transactionDate) {
         this.dateOf = transactionDate;
@@ -1023,8 +1045,13 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
 
     public static LoanTransaction buyDownFee(final Loan loan, final Money amount, final PaymentDetail paymentDetail,
             final LocalDate transactionDate, final ExternalId externalId) {
-        return new LoanTransaction(loan, loan.getOffice(), LoanTransactionType.BUY_DOWN_FEE, paymentDetail, amount.getAmount(),
-                transactionDate, externalId);
+        final BigDecimal buyDownFeeAmount = amount.getAmount();
+        return switch (loan.getLoanProductRelatedDetail().getBuyDownFeeIncomeType()) {
+            case FEE -> new LoanTransaction(loan, loan.getOffice(), LoanTransactionType.BUY_DOWN_FEE, transactionDate, buyDownFeeAmount,
+                    null, null, buyDownFeeAmount, null, null, false, paymentDetail, externalId);
+            case INTEREST -> new LoanTransaction(loan, loan.getOffice(), LoanTransactionType.BUY_DOWN_FEE, transactionDate,
+                    buyDownFeeAmount, null, buyDownFeeAmount, null, null, null, false, paymentDetail, externalId);
+        };
     }
 
     public boolean isBuyDownFee() {

@@ -1,13 +1,32 @@
 name: Fineract Sonarqube
 on:
   workflow_call:
+    secrets:
+      SONAR_ORGANIZATION:
+        required: false
+      SONAR_PROJECT_KEY:
+        required: false
+      SONAR_HOST_URL:
+        required: false
+      SONARCLOUD_TOKEN:
+        required: false
+      DEVELOCITY_ACCESS_KEY:
+        required: false
 permissions:
   contents: read
 jobs:
   build:
-    if: ${{ github.event_name == 'push' && github.ref_name == 'develop' }}
+    if: >-
+      ${{
+        github.event_name == 'push' &&
+        (
+          github.ref_name == 'develop' ||
+          startsWith(github.ref_name, 'release/') ||
+          startsWith(github.ref_name, '1.')
+        )
+      }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
         TZ: Asia/Kolkata
         SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
@@ -24,14 +43,14 @@ jobs:
           java-version: '21'
           distribution: 'zulu'
       - name: Download workspace
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: fineract-workspace-${{ github.run_id }}
           path: .
       - name: Extract workspace
         run: tar -xf fineract-workspace.tar
       - name: Setup Gradle and Validate Wrapper
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+        uses: gradle/actions/setup-gradle@5e2ebd065dc2488b7a6ad670704656cbbe1e8f60 # v6.1.1
         with:
           validate-wrappers: true
       - name: Sonar

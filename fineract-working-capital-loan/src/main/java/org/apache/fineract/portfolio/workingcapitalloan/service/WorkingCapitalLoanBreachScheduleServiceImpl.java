@@ -64,8 +64,7 @@ public class WorkingCapitalLoanBreachScheduleServiceImpl implements WorkingCapit
             return;
         }
 
-        final int graceDays = getGraceDays(loan);
-        final LocalDate fromDate = disbursementDateOptional.get().plusDays(graceDays);
+        final LocalDate fromDate = disbursementDateOptional.get().plusDays(getBreachGraceDays(loan));
         final WorkingCapitalBreach breach = breachOpt.get();
         final LocalDate toDate = calculateToDate(fromDate, breach.getBreachFrequency(), breach.getBreachFrequencyType());
         final BigDecimal minPaymentAmount = calculateMinPaymentAmount(loan, breach);
@@ -117,7 +116,7 @@ public class WorkingCapitalLoanBreachScheduleServiceImpl implements WorkingCapit
     public boolean evaluateBreachOnDate(final WorkingCapitalLoanBreachSchedule period, final LocalDate businessDate) {
         final boolean canBreach = period.getOutstandingAmount().compareTo(BigDecimal.ZERO) > 0;
         if (canBreach) {
-            if (businessDate.isAfter(period.getToDate())) {
+            if (!businessDate.isBefore(period.getToDate())) {
                 period.setBreach(true);
             }
         } else {
@@ -147,14 +146,18 @@ public class WorkingCapitalLoanBreachScheduleServiceImpl implements WorkingCapit
     }
 
     @Override
-    public void evaluateExpiredPeriods(final WorkingCapitalLoan loan, final LocalDate businessDate) {
-        final List<WorkingCapitalLoanBreachSchedule> unevaluatedPeriods = repository
-                .findByLoanIdAndToDateLessThanEqualAndBreachIsNull(loan.getId(), businessDate);
-        for (final WorkingCapitalLoanBreachSchedule period : unevaluatedPeriods) {
-            evaluateBreachOnDate(period, businessDate);
+    public void evaluateBreach(final WorkingCapitalLoan loan, final LocalDate businessDate) {
+        final Optional<WorkingCapitalLoanBreachSchedule> relevantPeriod = repository
+                .findByLoanIdAndFromDateLessThanEqualAndToDateGreaterThanEqual(loan.getId(), businessDate, businessDate);
+        if (relevantPeriod.isEmpty()) {
+            return;
         }
-        if (!unevaluatedPeriods.isEmpty()) {
-            repository.saveAllAndFlush(unevaluatedPeriods);
+        final WorkingCapitalLoanBreachSchedule period = relevantPeriod.get();
+        if (period.getBreach() != null) {
+            return;
+        }
+        if (evaluateBreachOnDate(period, businessDate)) {
+            repository.saveAndFlush(period);
         }
     }
 
@@ -192,12 +195,9 @@ public class WorkingCapitalLoanBreachScheduleServiceImpl implements WorkingCapit
         return Optional.ofNullable(details.getBreach());
     }
 
-    private int getGraceDays(final WorkingCapitalLoan loan) {
+    private Integer getBreachGraceDays(final WorkingCapitalLoan loan) {
         final WorkingCapitalLoanProductRelatedDetails details = loan.getLoanProductRelatedDetails();
-        if (details == null || details.getDelinquencyGraceDays() == null) {
-            return 0;
-        }
-        return details.getDelinquencyGraceDays();
+        return (details == null || details.getBreachGraceDays() == null) ? 0 : details.getBreachGraceDays();
     }
 
     private LocalDate calculateToDate(final LocalDate fromDate, final Integer frequency,

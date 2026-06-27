@@ -79,6 +79,7 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanApplica
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProduct;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductRelatedDetail;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanSupportedInterestRefundTypes;
+import org.apache.fineract.portfolio.loanproduct.domain.RepaymentStartDateType;
 import org.apache.fineract.portfolio.rate.domain.Rate;
 import org.apache.fineract.portfolio.repaymentwithpostdatedchecks.domain.PostDatedChecks;
 import org.apache.fineract.useradministration.domain.AppUser;
@@ -114,11 +115,11 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Version
     int version;
 
-    @Setter()
+    @Setter
     @Column(name = "account_no", length = 20, unique = true, nullable = false)
     private String accountNumber;
 
-    @Setter()
+    @Setter
     @Column(name = "external_id")
     private ExternalId externalId;
 
@@ -130,7 +131,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @JoinColumn(name = "group_id")
     private Group group;
 
-    @Setter()
+    @Setter
     @ManyToOne
     @JoinColumn(name = "glim_id")
     private GroupLoanIndividualMonitoringAccount glim;
@@ -175,11 +176,11 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Embedded
     private LoanProductRelatedDetail loanRepaymentScheduleDetail;
 
-    @Setter()
+    @Setter
     @Column(name = "term_frequency", nullable = false)
     private Integer termFrequency;
 
-    @Setter()
+    @Setter
     @Enumerated
     @Column(name = "term_period_frequency_enum", nullable = false)
     private PeriodFrequencyType termPeriodFrequencyType;
@@ -189,60 +190,60 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Convert(converter = LoanStatusConverter.class)
     private LoanStatus loanStatus;
 
-    @Setter()
+    @Setter
     @Column(name = "sync_disbursement_with_meeting")
     private Boolean syncDisbursementWithMeeting;
 
     // loan application states
-    @Setter()
+    @Setter
     @Column(name = "submittedon_date")
     private LocalDate submittedOnDate;
 
-    @Setter()
+    @Setter
     @Column(name = "rejectedon_date")
     private LocalDate rejectedOnDate;
 
-    @Setter()
+    @Setter
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "rejectedon_userid")
     private AppUser rejectedBy;
 
-    @Setter()
+    @Setter
     @Column(name = "withdrawnon_date")
     private LocalDate withdrawnOnDate;
 
-    @Setter()
+    @Setter
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "withdrawnon_userid")
     private AppUser withdrawnBy;
 
-    @Setter()
+    @Setter
     @Column(name = "approvedon_date")
     private LocalDate approvedOnDate;
 
-    @Setter()
+    @Setter
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "approvedon_userid")
     private AppUser approvedBy;
 
-    @Setter()
+    @Setter
     @Column(name = "expected_disbursedon_date")
     private LocalDate expectedDisbursementDate;
 
-    @Setter()
+    @Setter
     @Column(name = "disbursedon_date")
     private LocalDate actualDisbursementDate;
 
-    @Setter()
+    @Setter
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "disbursedon_userid")
     private AppUser disbursedBy;
 
-    @Setter()
+    @Setter
     @Column(name = "closedon_date")
     private LocalDate closedOnDate;
 
-    @Setter()
+    @Setter
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "closedon_userid")
     private AppUser closedBy;
@@ -263,15 +264,15 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "expected_maturedon_date")
     private LocalDate expectedMaturityDate;
 
-    @Setter()
+    @Setter
     @Column(name = "maturedon_date")
     private LocalDate actualMaturityDate;
 
-    @Setter()
+    @Setter
     @Column(name = "expected_firstrepaymenton_date")
     private LocalDate expectedFirstRepaymentOnDate;
 
-    @Setter()
+    @Setter
     @Column(name = "interest_calculated_from_date")
     private LocalDate interestChargedFromDate;
 
@@ -279,7 +280,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "total_overpaid_derived", scale = 6, precision = 19)
     private BigDecimal totalOverpaid;
 
-    @Setter()
+    @Setter
     @Column(name = "overpaidon_date")
     private LocalDate overpaidOnDate;
 
@@ -317,23 +318,23 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Embedded
     private LoanSummary summary;
 
-    @Setter()
+    @Setter
     @Column(name = "principal_amount_proposed", scale = 6, precision = 19, nullable = false)
     private BigDecimal proposedPrincipal;
 
-    @Setter()
+    @Setter
     @Column(name = "approved_principal", scale = 6, precision = 19, nullable = false)
     private BigDecimal approvedPrincipal;
 
-    @Setter()
+    @Setter
     @Column(name = "net_disbursal_amount", scale = 6, precision = 19, nullable = false)
     private BigDecimal netDisbursalAmount;
 
-    @Setter()
+    @Setter
     @Column(name = "fixed_emi_amount", scale = 6, precision = 19)
     private BigDecimal fixedEmiAmount;
 
-    @Setter()
+    @Setter
     @Column(name = "max_outstanding_loan_balance", scale = 6, precision = 19)
     private BigDecimal maxOutstandingLoanBalance;
 
@@ -358,11 +359,11 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "is_npa", nullable = false)
     private boolean isNpa;
 
-    @Setter()
+    @Setter
     @Column(name = "accrued_till")
     private LocalDate accruedTill;
 
-    @Setter()
+    @Setter
     @Column(name = "create_standing_instruction_at_disbursement")
     private Boolean createStandingInstructionAtDisbursement;
 
@@ -373,11 +374,11 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "interest_recalcualated_on")
     private LocalDate interestRecalculatedOn;
 
-    @Setter()
+    @Setter
     @Column(name = "is_floating_interest_rate")
     private Boolean isFloatingInterestRate;
 
-    @Setter()
+    @Setter
     @Column(name = "interest_rate_differential", scale = 6, precision = 19)
     private BigDecimal interestRateDifferential;
 
@@ -402,11 +403,11 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @JoinTable(name = "m_loan_rate", joinColumns = @JoinColumn(name = "loan_id"), inverseJoinColumns = @JoinColumn(name = "rate_id"))
     private List<Rate> rates;
 
-    @Setter()
+    @Setter
     @Column(name = "fixed_principal_percentage_per_installment", scale = 2, precision = 5)
     private BigDecimal fixedPrincipalPercentagePerInstallment;
 
-    @Setter()
+    @Setter
     @Column(name = "last_closed_business_date")
     private LocalDate lastClosedBusinessDate;
 
@@ -430,6 +431,9 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Getter
     @Column(name = "allow_full_term_for_tranche", nullable = false)
     private boolean allowFullTermForTranche = false;
+
+    @Column(name = "repayment_start_date_type_enum")
+    private RepaymentStartDateType repaymentStartDateType;
 
     public static Loan newIndividualLoanApplication(final String accountNo, final Client client, final AccountType loanType,
             final LoanProduct loanProduct, final Fund fund, final Staff officer, final CodeValue loanPurpose,
@@ -566,6 +570,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         this.expectedFirstRepaymentOnDate = loanApplicationTerms.getRepaymentStartFromDate();
         this.interestChargedFromDate = loanApplicationTerms.getInterestChargedFromDate();
         this.submittedOnDate = submittedOnDate != null ? submittedOnDate : DateUtils.getBusinessLocalDate();
+        this.repaymentStartDateType = loanApplicationTerms.getRepaymentStartDateType();
 
         updateSummaryWithTotalFeeChargesDueAtDisbursement(deriveSumTotalOfChargesDueAtDisbursement());
 
@@ -1844,4 +1849,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         return getRepaymentScheduleInstallments().stream().filter(i -> !i.isDownPayment() && !i.isAdditional()).count();
     }
 
+    public RepaymentStartDateType getRepaymentStartDateType() {
+        return this.repaymentStartDateType != null ? this.repaymentStartDateType : this.loanProduct.getRepaymentStartDateType();
+    }
 }
