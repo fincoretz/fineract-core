@@ -51,12 +51,18 @@ public class ScheduledJobRunnerConfig {
 
     @Bean
     public JobRepository jobRepository(RoutingDataSource routingDataSource,
-            @Qualifier("batchJdbcTransactionManager") PlatformTransactionManager transactionManager,
+            @Qualifier("jdbcTransactionManager") PlatformTransactionManager transactionManager,
             Jackson2ExecutionContextStringSerializer executionContextSerializer, DataFieldMaxValueIncrementerFactory incrementerFactory)
             throws Exception {
         JobRepositoryFactoryBean factory = new JobRepositoryFactoryBean();
         factory.setDataSource(routingDataSource);
         factory.setTransactionManager(transactionManager);
+        // Deliberate downgrade from Spring Batch's SERIALIZABLE default: SERIALIZABLE on the create-JobExecution path
+        // causes serialization failures/contention (notably on PostgreSQL). Protection against duplicate job launches
+        // comes from the scheduled_job_detail pessimistic lock (see
+        // SchedularWritePlatformService#processJobDetailForExecution),
+        // not from this isolation level. Do NOT "tidy" this to match the connection-pool baseline - it would change
+        // behavior.
         factory.setIsolationLevelForCreate("ISOLATION_READ_COMMITTED");
         factory.setSerializer(executionContextSerializer);
         factory.setIncrementerFactory(incrementerFactory);
@@ -66,7 +72,7 @@ public class ScheduledJobRunnerConfig {
 
     @Bean
     public JobExplorer jobExplorer(RoutingDataSource routingDataSource,
-            @Qualifier("batchJdbcTransactionManager") PlatformTransactionManager transactionManager,
+            @Qualifier("jdbcTransactionManager") PlatformTransactionManager transactionManager,
             Jackson2ExecutionContextStringSerializer executionContextSerializer) throws Exception {
         JobExplorerFactoryBean jobExplorerFactoryBean = new JobExplorerFactoryBean();
         jobExplorerFactoryBean.setDataSource(routingDataSource);
