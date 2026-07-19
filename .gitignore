@@ -1,3 +1,6 @@
+# Contains real PgBouncer auth credentials generated locally; see userlist.txt.example
+config/docker/pgbouncer/userlist.txt
+
 *.class
 *.jar
 *.war

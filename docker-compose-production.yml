@@ -1,0 +1,92 @@
+# Production stack for Portainer
+# Deploy: Portainer → Stacks → Add Stack → paste this file
+#
+# Prerequisites:
+#   - fineract_db container already running on fineract-net
+#   - fineract Docker image built and pushed to your registry
+#   - Update FINERACT_IMAGE below to your registry image
+#
+# NOTE: `deploy.replicas` below only takes effect if this Portainer instance
+# runs stacks in Swarm mode. If you're deploying as a plain Docker Compose
+# stack (no Swarm), replicas are ignored and only 1 container per service
+# starts — duplicate the service block manually (e.g. fineract-read-2) for
+# extra replicas, or enable Swarm mode in Portainer.
+
+x-fineract-common: &fineract-common
+  image: ${FINERACT_IMAGE:-75.119.154.177:5000/fineract:latest}
+  restart: unless-stopped
+  networks:
+    - fineract-net
+  depends_on:
+    pgbouncer:
+      condition: service_healthy
+  env_file:
+    - ./config/docker/env/fineract-production.env
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8080/fineract-provider/actuator/health/liveness"]
+    interval: 30s
+    timeout: 10s
+    retries: 5
+    start_period: 60s
+
+services:
+
+  # ── PgBouncer ──────────────────────────────────────────────────────────────
+  pgbouncer:
+    image: 75.119.154.177:5000/pgbouncer:latest
+    restart: unless-stopped
+    networks:
+      - fineract-net
+    ports:
+      - "5433:5432"         # expose on 5433 externally so it doesn't conflict with fineract_db
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "5432", "-U", "pgbouncer_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Read instance ──────────────────────────────────────────────────────────
+  fineract-read:
+    <<: *fineract-common
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-read.env
+    ports:
+      - "8081:8080"
+    deploy:
+      replicas: 2        # scale read nodes horizontally
+
+  # ── Write instance ─────────────────────────────────────────────────────────
+  fineract-write:
+    <<: *fineract-common
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-write.env
+    ports:
+      - "8082:8080"
+    deploy:
+      replicas: 1
+
+  # ── Batch Manager (only ever 1) ────────────────────────────────────────────
+  fineract-batch-manager:
+    <<: *fineract-common
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-batch-manager.env
+    ports:
+      - "8083:8080"
+    deploy:
+      replicas: 1        # NEVER scale this beyond 1
+
+  # ── Batch Worker ───────────────────────────────────────────────────────────
+  fineract-batch-worker:
+    <<: *fineract-common
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-batch-worker.env
+    deploy:
+      replicas: 2        # scale freely
+
+networks:
+  fineract-net:
+    external: true       # attach to your existing network

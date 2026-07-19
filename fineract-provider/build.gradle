@@ -316,33 +316,45 @@ jib {
         image = 'azul/zulu-openjdk-alpine:21'
         platforms {
             platform {
-                architecture = System.getProperty("os.arch").equals("aarch64")?"arm64":"amd64"
+                architecture = 'amd64'
                 os = 'linux'
             }
         }
     }
 
     to {
-        image = 'fineract'
+        image = "${System.getenv('FINERACT_REGISTRY') ?: '75.119.154.177:5000'}/fineract"
         tags = [
             "${project.version}",
             'latest'
         ]
+        auth {
+            username = System.getenv('REGISTRY_USERNAME') ?: ''
+            password = System.getenv('REGISTRY_PASSWORD') ?: ''
+        }
     }
 
     container {
         creationTime = 'USE_CURRENT_TIMESTAMP'
         mainClass = 'org.apache.fineract.ServerApplication'
         extraClasspath = ['/app/plugins/*']
-        args = [
+        jvmFlags = [
+            '-Xms1g',
+            '-Xmx2g',
+            '-XX:+UseG1GC',
+            '-XX:MaxGCPauseMillis=200',
+            '-XX:+UseStringDeduplication',
             '-Duser.home=/tmp',
             '-Dfile.encoding=UTF-8',
             '-Duser.timezone=UTC',
             '-Djava.security.egd=file:/dev/./urandom'
         ]
-        ports = ['8080/tcp', '8443/tcp']
-        labels = [maintainer: 'Aleksandar Vidakovic <aleks@apache.org>']
+        ports = ['8080/tcp']
+        labels = [maintainer: 'Imara', version: "${project.version}"]
         user = 'nobody:nogroup'
+        environment = [
+            'SPRING_OUTPUT_ANSI_ENABLED': 'NEVER'
+        ]
     }
 
     allowInsecureRegistries = true
