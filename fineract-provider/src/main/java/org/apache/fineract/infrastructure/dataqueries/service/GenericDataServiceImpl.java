@@ -95,7 +95,17 @@ public class GenericDataServiceImpl implements GenericDataService {
     @Override
     public GenericResultsetData fillGenericResultSet(final String sql, final Object... args) {
         try {
-            final SqlRowSet rs = this.jdbcTemplate.queryForRowSet(sql, args);
+            // Bind every report parameter as an unspecified (Types.OTHER) value so PostgreSQL
+            // coerces it to the target column's type at execution time. This reproduces the
+            // original literal-substitution semantics (an untyped SQL constant coerces freely,
+            // e.g. '-1' works against both a bigint and a varchar column) while keeping
+            // parameterized, injection-safe binding. Without this, a String binds as text and a
+            // numeric binds as bigint, either of which raises "operator does not exist" against a
+            // column of the other category (the source of the report BadSqlGrammar failures).
+            final int[] argTypes = new int[args.length];
+            java.util.Arrays.fill(argTypes, java.sql.Types.OTHER);
+            final SqlRowSet rs = this.jdbcTemplate.query(sql, new org.springframework.jdbc.core.ArgumentTypePreparedStatementSetter(args, argTypes),
+                    new org.springframework.jdbc.core.SqlRowSetResultSetExtractor());
 
             final List<ResultsetColumnHeaderData> columnHeaders = new ArrayList<>();
 
