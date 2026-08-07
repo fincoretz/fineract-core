@@ -142,6 +142,18 @@ plain Compose/Portainer stacks, duplicate the service block per replica.
      the same with a `limit_except`/`if ($request_method …)` split. Proven
      end-to-end (browser → proxy → correct instance) by killing the read
      container and confirming GETs 502 while writes stayed up.
+   - **Non-RESTful caveat — Fineract's read-via-POST endpoints stay on write.**
+     A few endpoints are semantically reads but implemented as `POST` (they need
+     a request body): notably `POST /collectionsheet` (retrieve a collection
+     sheet) and `POST /external-asset-owners/search`. Method routing sends them
+     to the **write** instance, and they **cannot** be moved to read — the read
+     instance rejects every non-GET with `405 "Invalid instance type"` (verified:
+     both 405 on the read instance, both succeed via the split → write). They
+     work correctly; the caveat is that these read-heavy operations do not
+     benefit from read-replica scaling and add load to the single write node. If
+     one becomes a hotspot, the fix is upstream (expose it as GET) — not proxy
+     config. The portal's own search and reports use GET (`/search`, `/reports`,
+     `/runreports/*`) and route to read as intended.
 4. **TLS terminates at the proxy.** Fineract containers run plain HTTP
    internally (`FINERACT_SERVER_SSL_ENABLED=false`, `FINERACT_SERVER_PORT=8080`
    — set both explicitly; do not rely on image defaults). The proxy must set
