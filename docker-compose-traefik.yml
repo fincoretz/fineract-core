@@ -1,0 +1,39 @@
+# Reverse-proxy layer for the split-instance stack (DEPLOYMENT_REQUIREMENTS.md §4).
+#
+# Runs Traefik against the existing `fineract-net`. The application tier
+# (fineract read/write/batch, portal) is brought up separately — e.g.
+# docker-compose-production.yml for the Fineract roles — and Traefik discovers
+# them by service name over the shared network. Routing config is bind-mounted
+# from ./config/docker/traefik (static traefik.yml + hot-reloaded ./dynamic).
+#
+# Local trial:  docker compose -f docker-compose-traefik.yml up -d
+#   then reach the stack via http://api.localhost, http://portal.localhost,
+#   and the dashboard at http://traefik.localhost (admin/admin — replace).
+#
+# The routing rules (method-based read/write split, portal host, auth'd
+# dashboard, batch instances never exposed) are the ones validated locally;
+# see config/docker/traefik/dynamic/routes.yml for the staging deltas
+# (real domains + TLS).
+
+services:
+  traefik:
+    image: traefik:v3.2
+    container_name: fineract-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # - "443:443"   # enable with TLS for staging (see traefik.yml)
+    networks:
+      fineract-net:
+        aliases:
+          # Internal alias the portal's SSR proxy targets via API_URL=http://api
+          # so server-side calls get the read/write split without a public hop.
+          - api
+    volumes:
+      - ./config/docker/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./config/docker/traefik/dynamic:/etc/traefik/dynamic:ro
+      # - ./config/docker/traefik/letsencrypt:/letsencrypt   # TLS storage (staging)
+
+networks:
+  fineract-net:
+    external: true

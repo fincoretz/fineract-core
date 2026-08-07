@@ -23,7 +23,9 @@ x-fineract-common: &fineract-common
   env_file:
     - ./config/docker/env/fineract-production.env
   healthcheck:
-    test: ["CMD", "curl", "-f", "http://localhost:8080/fineract-provider/actuator/health/liveness"]
+    # The jib-built fineract image ships wget/nc but not curl — a curl-based
+    # probe reports every instance unhealthy (and dependents refuse to start).
+    test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/fineract-provider/actuator/health/liveness"]
     interval: 30s
     timeout: 10s
     retries: 5

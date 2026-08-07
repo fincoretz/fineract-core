@@ -23,8 +23,8 @@
 # Example:
 #   ./provision-tenant.sh platform "Platform Admin Tenant" "UTC"
 #
-# Requires: psql, openssl >= 3 (for PBKDF2 + AES-256-CBC), python3 with the bcrypt module
-#   (pip3 install bcrypt) for the master-password hash.
+# Requires: psql, python3 with the bcrypt and cryptography modules
+#   (pip3 install bcrypt cryptography).
 
 set -euo pipefail
 
@@ -83,18 +83,29 @@ echo "==> [3/4] Registering tenant '${TENANT_ID}' in fineract_tenants"
 # Fineract stores schema_password encrypted (AES-256-CBC via PBKDF2WithHmacSHA1, 65536 iterations,
 # base64(iv[16] + salt[16] + ciphertext)) and validates a bcrypt hash of the master password before
 # using the connection at all - see DatabasePasswordEncryptor / EncryptionUtil in the Java codebase.
-# We replicate both here with openssl + python3, so a newly-registered tenant is usable immediately
-# without any manual DB patching.
-
-SALT_HEX="$(openssl rand -hex 16)"
-IV_HEX="$(openssl rand -hex 16)"
-CIPHERTEXT_B64="$(printf '%s' "$FINERACT_DB_PASSWORD" | openssl enc -aes-256-cbc -pbkdf2 -iter 65536 \
-  -md sha1 -S "$SALT_HEX" -iv "$IV_HEX" -pass "pass:${FINERACT_TENANT_MASTER_PASSWORD}" | base64 | tr -d '\n')"
+# We replicate this in python3 (via the `cryptography` package), NOT the openssl CLI: openssl's
+# `enc -S` flag silently truncates a 16-byte salt to its legacy 8-byte PKCS5_SALT_LEN buffer (visible
+# as a "hex string is too long, ignoring excess" warning), which derives a different key than Java's
+# PBKDF2WithHmacSHA1 uses against the full 16-byte salt actually stored - every tenant provisioned
+# that way fails to decrypt at Fineract boot with BadPaddingException. python3 -m pip install cryptography.
 ENCRYPTED_SCHEMA_PASSWORD="$(python3 -c "
-import base64
-iv = bytes.fromhex('${IV_HEX}')
-salt = bytes.fromhex('${SALT_HEX}')
-ciphertext = base64.b64decode('${CIPHERTEXT_B64}')
+import os, base64
+from cryptography.hazmat.primitives import hashes, padding as sympadding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+master_password = '${FINERACT_TENANT_MASTER_PASSWORD}'.encode()
+data = '${FINERACT_DB_PASSWORD}'.encode()
+
+salt = os.urandom(16)
+iv = os.urandom(16)
+key = PBKDF2HMAC(algorithm=hashes.SHA1(), length=32, salt=salt, iterations=65536).derive(master_password)
+
+padder = sympadding.PKCS7(128).padder()
+padded_data = padder.update(data) + padder.finalize()
+encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
+ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+
 print(base64.b64encode(iv + salt + ciphertext).decode())
 ")"
 
