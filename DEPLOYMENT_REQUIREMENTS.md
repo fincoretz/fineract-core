@@ -235,7 +235,13 @@ tenant count.
     pre-existing DBs need it run once manually.
 - Server tuning (32 GB node, adjust proportionally):
   `max_connections=200`, `shared_buffers=8GB`, `effective_cache_size=24GB`,
-  `work_mem=64MB`, `maintenance_work_mem=512MB`, `wal_level=replica`.
+  `work_mem=64MB`, `maintenance_work_mem=512MB`, `wal_level=replica`. These are
+  captured as an applyable file at `config/docker/postgresql/postgresql-
+  production.conf` — append it to the provisioned Postgres's config (or `-c`
+  each line / `ALTER SYSTEM SET`). `max_connections` **must stay above**
+  PgBouncer's `max_db_connections=180`, which is the real backend ceiling.
+  (The local dev stack applies a laptop-scaled subset via the db service
+  `command:` in `docker-compose-splitstack.yml`.)
 - **Backups**: nightly logical dump of every `fineract_*` database
   (`pg_dump -Fc`) **plus** continuous WAL archiving (e.g. WAL-G/pgBackRest) to
   off-node object storage. Retention ≥ 30 days. A restore test is part of
