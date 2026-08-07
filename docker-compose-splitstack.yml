@@ -50,6 +50,25 @@ services:
     image: postgres:18.3
     container_name: fineract-db
     restart: unless-stopped
+    # Laptop-scaled tuning. max_connections=200 matches DEPLOYMENT_REQUIREMENTS.md
+    # §6 and MUST stay above PgBouncer's max_db_connections=180 for that cap to be
+    # valid; the memory settings are small dev values. Production uses the full
+    # 32 GB-node values in config/docker/postgresql/postgresql-production.conf,
+    # applied to the externally provisioned Postgres (§3/§6).
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=768MB"
+      - "-c"
+      - "work_mem=16MB"
+      - "-c"
+      - "maintenance_work_mem=128MB"
+      - "-c"
+      - "wal_level=replica"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: pgSuperLocal123
