@@ -1,0 +1,59 @@
+# Traefik STATIC config — PRODUCTION / UAT edge (real domains + TLS).
+# Companion to the local-validated traefik.yml; the routing LOGIC is identical,
+# these are the staging deltas called out in that file and DEPLOYMENT_REQUIREMENTS.md §4.
+#
+# Differences from the local traefik.yml:
+#   - three entrypoints: public :80 (redirects to https), public :443 (TLS),
+#     and a SEPARATE internal :8000 for the portal's SSR→api traffic so the
+#     global http→https redirect never catches on-network calls (§4/§9 caveat).
+#   - Let's Encrypt via HTTP-01 (per-host; no DNS-provider dependency — the
+#     rehearsal serves the four already-known hosts). Wildcard DNS-01 is the
+#     later prod step once the final domain is fixed (§12).
+#
+# Mounted read-only at /etc/traefik/traefik.yml. The prod dynamic routes are
+# mounted at /etc/traefik/dynamic (see docker-compose-production.yml).
+
+entryPoints:
+  # Public HTTP — redirects everything to HTTPS. The ACME HTTP-01 challenge on
+  # /.well-known/acme-challenge/ is still served here (Traefik prioritises it
+  # over the redirect), so certificate issuance/renewal is unaffected.
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+
+  # Public HTTPS — TLS terminated here; routers attach `tls: {certResolver: le}`.
+  websecure:
+    address: ":443"
+
+  # Internal-only — the portal SSR proxy reaches the read/write split via
+  # http://api:8000 on the private network. NOT published to the host in the
+  # compose, so it never receives public traffic and is never redirected.
+  internal:
+    address: ":8000"
+
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+api:
+  dashboard: true
+  # No `insecure: true` — the dashboard is exposed only through the auth'd
+  # `dashboard` router in ./dynamic-prod/routes.yml, over TLS.
+
+certificatesResolvers:
+  le:
+    acme:
+      # REPLACE with the real ops mailbox before deploy (LE expiry notices).
+      email: devops@imarafinance.africa
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
+
+log:
+  level: INFO
+accessLog: {}
