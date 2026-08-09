@@ -1,0 +1,158 @@
+# Traefik DYNAMIC routing — PRODUCTION / UAT edge.
+# Mounted at /etc/traefik/dynamic (file provider, hot-reloaded). Companion to
+# the local dynamic/routes.yml; same routing LOGIC, real domains + TLS.
+# See DEPLOYMENT_REQUIREMENTS.md §4 (routing) and §9 (portal).
+#
+# Parity with the retired Caddyfile: the four tenant portals + Portainer are
+# reproduced here (Caddy's `:443` catch-all → Portainer becomes an explicit,
+# auth'd host). NEW vs Caddy: the api read/write split and kafka-ui, neither of
+# which Caddy served.
+#
+# TLS: every public router uses `tls: {certResolver: le}` (HTTP-01, traefik.prod.yml).
+# Admin tools (dashboard, kafka-ui, portainer) sit behind the shared `admin-auth`
+# basic-auth middleware, whose credentials come from a mounted htpasswd secret
+# (NOT committed) — see docker-compose-production.yml.
+
+http:
+  routers:
+
+    # ── Tenant portals (Caddy parity) ──────────────────────────────────────────
+    portal-bedrock:
+      rule: "Host(`bedrock.imarafinance.africa`)"
+      service: portal-bedrock
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    portal-imarishamaisha:
+      rule: "Host(`imarishamaisha.imarafinance.africa`)"
+      service: portal-imarishamaisha
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    portal-sandbox:
+      rule: "Host(`sandbox.imarafinance.africa`)"
+      service: portal-sandbox
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    portal-bongobing:
+      rule: "Host(`bongobing.imarafinance.africa`)"
+      service: portal-bongobing
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    # ── Admin UI — internal-only for now (decision D3). Uncomment + pick a host
+    #    to expose it publicly; it otherwise stays reachable only on the private
+    #    network / :3100.
+    # portal-admin:
+    #   rule: "Host(`admin.imarafinance.africa`)"
+    #   service: portal-admin
+    #   entryPoints: [websecure]
+    #   tls: { certResolver: le }
+    #   middlewares: [admin-auth]
+
+    # ── Fineract API — public (browser-facing) read/write split ────────────────
+    # GET/HEAD → read (priority 100 wins over the write catch-all). See the
+    # non-RESTful read-via-POST caveat in §4.3: POST reads (collectionsheet,
+    # external-asset-owners/search) intentionally land on write.
+    api-read-public:
+      rule: "Host(`api.imarafinance.africa`) && (Method(`GET`) || Method(`HEAD`))"
+      service: fineract-read
+      priority: 100
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    api-write-public:
+      rule: "Host(`api.imarafinance.africa`)"
+      service: fineract-write
+      priority: 1
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    # ── Fineract API — internal (portal SSR via http://api:8000, no TLS) ───────
+    api-read-internal:
+      rule: "Host(`api`) && (Method(`GET`) || Method(`HEAD`))"
+      service: fineract-read
+      priority: 100
+      entryPoints: [internal]
+
+    api-write-internal:
+      rule: "Host(`api`)"
+      service: fineract-write
+      priority: 1
+      entryPoints: [internal]
+
+    # ── Admin tools (auth + TLS) ───────────────────────────────────────────────
+    dashboard:
+      rule: "Host(`traefik.imarafinance.africa`)"
+      service: api@internal
+      middlewares: [admin-auth]
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    kafka-ui:
+      rule: "Host(`kafka.imarafinance.africa`)"
+      service: kafka-ui
+      middlewares: [admin-auth]
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    portainer:
+      rule: "Host(`portainer.imarafinance.africa`)"
+      service: portainer
+      middlewares: [admin-auth]
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+  middlewares:
+    admin-auth:
+      basicAuth:
+        # Credentials live in a mounted htpasswd file, NOT in git. Create it on
+        # the box (htpasswd -B) and mount to this path — see the traefik service
+        # in docker-compose-production.yml.
+        usersFile: /etc/traefik/secrets/admin.htpasswd
+
+  services:
+    fineract-read:
+      loadBalancer:
+        servers:
+          - url: "http://fineract-read:8080"
+    fineract-write:
+      loadBalancer:
+        servers:
+          - url: "http://fineract-write:8080"
+
+    # Tenant portals — same fineract-neo-ui image per container, one per tenant
+    # (TENANT_ID differs). Names match the network aliases the retired Caddyfile used.
+    portal-bedrock:
+      loadBalancer:
+        servers:
+          - url: "http://fineract-neo-ui:3000"
+    portal-imarishamaisha:
+      loadBalancer:
+        servers:
+          - url: "http://imarisha-ui:3000"
+    portal-sandbox:
+      loadBalancer:
+        servers:
+          - url: "http://sandbox-ui:3000"
+    portal-bongobing:
+      loadBalancer:
+        servers:
+          - url: "http://bongobing-ui:3000"
+    # portal-admin:
+    #   loadBalancer:
+    #     servers:
+    #       - url: "http://admin-ui:3000"
+
+    kafka-ui:
+      loadBalancer:
+        servers:
+          - url: "http://kafka-ui:8080"
+    portainer:
+      loadBalancer:
+        servers:
+          - url: "http://portainer:9000"
+
+  # batch-manager and batch-worker are deliberately NOT routed — internal
+  # Kafka/job traffic only (§4.3).

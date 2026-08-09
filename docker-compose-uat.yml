@@ -1,0 +1,140 @@
+# UAT CUTOVER stack — deploy-time form of docker-compose-production.yml.
+# Deploy from /root/stack on the box:
+#   docker stack deploy -c docker-compose-uat.yml --with-registry-auth --resolve-image=always fineract
+#
+# Differences from docker-compose-production.yml, and why:
+#  - Bind-mount sources are ABSOLUTE (/root/stack/...). Swarm passes mount
+#    sources to the node verbatim; a relative path would be read as a volume name.
+#  - `restart:` replaced by deploy.restart_policy (Swarm ignores `restart:`).
+#  - `depends_on` removed — Swarm ignores it, so start order is enforced manually:
+#    read/batch-manager/batch-worker deploy at replicas 0 and are scaled up only
+#    after fineract-write has finished Liquibase. This is the ordering guarantee
+#    docker-compose-splitstack.yml gets from depends_on/condition locally.
+#  - Only ONE dynamic file is mounted (routes.uat.yml -> routes.yml). Mounting the
+#    whole dynamic-prod dir would load routes.yml AND routes.uat.yml, duplicating
+#    router names.
+#  - uat-overrides.env is LAST in each env_file list so it wins: the live platform
+#    uses postgres/postgres and master password `fineract`, not the repo defaults.
+
+x-fineract-common: &fineract-common
+  image: 75.119.154.177:5000/fineract:b6625dd37
+  networks: [fineract-net]
+  env_file:
+    - ./config/docker/env/fineract-production.env
+    - ./config/docker/env/uat-overrides.env
+  healthcheck:
+    # jib image ships wget, not curl
+    test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/fineract-provider/actuator/health/liveness"]
+    interval: 30s
+    timeout: 10s
+    retries: 5
+    start_period: 180s
+  deploy:
+    restart_policy:
+      condition: any
+      delay: 10s
+
+services:
+
+  pgbouncer:
+    image: 75.119.154.177:5000/pgbouncer:uat-20260809
+    networks: [fineract-net]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "5432", "-U", "pgbouncer_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  fineract-write:
+    <<: *fineract-common
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-write.env
+      - ./config/docker/env/uat-overrides.env
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+
+  fineract-read:
+    <<: *fineract-common
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-read.env
+      - ./config/docker/env/uat-overrides.env
+    deploy:
+      replicas: 2          # was 0 during the initial cutover (staged rollout); now the steady-state value
+      restart_policy:
+        condition: any
+        delay: 10s
+
+  fineract-batch-manager:
+    <<: *fineract-common
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-batch-manager.env
+      - ./config/docker/env/uat-overrides.env
+    deploy:
+      replicas: 1          # NEVER more than 1
+      restart_policy:
+        condition: any
+        delay: 10s
+
+  fineract-batch-worker:
+    <<: *fineract-common
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-batch-worker.env
+      - ./config/docker/env/uat-overrides.env
+    deploy:
+      # NOTE: `job-topic` currently has 1 partition, so only ONE of these can
+      # consume; the second is a warm standby. Raise the topic's partition count
+      # to actually parallelise COB across workers.
+      replicas: 2
+      restart_policy:
+        condition: any
+        delay: 10s
+
+  traefik:
+    image: traefik:v3.2
+    networks:
+      fineract-net:
+        aliases: [api]     # portal SSR targets http://api:8000
+    ports:
+      - "80:80"
+      - "443:443"
+      # :8000 internal entrypoint deliberately NOT published
+    volumes:
+      - /root/stack/config/docker/traefik/traefik.prod.yml:/etc/traefik/traefik.yml:ro
+      - /root/stack/config/docker/traefik/dynamic-prod/routes.uat.yml:/etc/traefik/dynamic/routes.yml:ro
+      - /root/stack/config/docker/traefik/secrets/admin.htpasswd:/etc/traefik/secrets/admin.htpasswd:ro
+      - traefik_letsencrypt:/letsencrypt
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    networks: [fineract-net]
+    environment:
+      KAFKA_CLUSTERS_0_NAME: fineract-uat
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "true"
+      AUTH_TYPE: DISABLED    # exposure control is Traefik admin-auth + TLS
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+volumes:
+  traefik_letsencrypt:
+
+networks:
+  fineract-net:
+    external: true

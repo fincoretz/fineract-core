@@ -80,6 +80,19 @@ SQL
 
 echo "==> [3/4] Registering tenant '${TENANT_ID}' in fineract_tenants"
 
+# The tenant-store tables are seeded with EXPLICIT ids (Liquibase, and any tenant
+# registered by an older process), which does NOT advance their identity
+# sequences. The INSERTs below omit id, so on a database that already has tenants
+# the sequence hands out an id that is already taken:
+#   ERROR: duplicate key value violates unique constraint "tenant_server_connections_pkey"
+# Realign both sequences to max(id) first. Harmless when they are already correct.
+psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_SUPERUSER" -d fineract_tenants -q -v ON_ERROR_STOP=1 <<'SQL'
+SELECT setval(pg_get_serial_sequence('tenants','id'),
+              COALESCE((SELECT max(id) FROM tenants), 1));
+SELECT setval(pg_get_serial_sequence('tenant_server_connections','id'),
+              COALESCE((SELECT max(id) FROM tenant_server_connections), 1));
+SQL
+
 # Fineract stores schema_password encrypted (AES-256-CBC via PBKDF2WithHmacSHA1, 65536 iterations,
 # base64(iv[16] + salt[16] + ciphertext)) and validates a bcrypt hash of the master password before
 # using the connection at all - see DatabasePasswordEncryptor / EncryptionUtil in the Java codebase.
@@ -114,7 +127,11 @@ import bcrypt
 print(bcrypt.hashpw('${FINERACT_TENANT_MASTER_PASSWORD}'.encode(), bcrypt.gensalt()).decode())
 ")"
 
+# ON_ERROR_STOP is essential: without it psql reports success even when the
+# INSERTs fail, and step 4 cheerfully prints "Tenant registered" for a tenant
+# that was never written.
 psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_SUPERUSER" -d fineract_tenants \
+  -v ON_ERROR_STOP=1 \
   -v encrypted_schema_password="'${ENCRYPTED_SCHEMA_PASSWORD}'" \
   -v master_password_hash="'${MASTER_PASSWORD_HASH}'" <<SQL
 INSERT INTO tenant_server_connections

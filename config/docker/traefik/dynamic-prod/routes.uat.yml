@@ -1,0 +1,172 @@
+# Traefik DYNAMIC routing — UAT CUTOVER variant of routes.yml.
+#
+# Identical to routes.yml except the routers whose hostnames have NO DNS record
+# yet (api./traefik./kafka./portainer..imarafinance.africa) are commented out.
+# Deploying them with `certResolver: le` would make Let's Encrypt fail HTTP-01
+# for each one and burn the failed-validation rate limit (5/hostname/hour).
+#
+# TO ENABLE THEM: create four A records -> 75.119.154.177, then uncomment the
+# blocks below (and the matching services) and Traefik hot-reloads.
+#
+# NOTE the portals do NOT need api.imarafinance.africa: fineract-neo-ui never
+# sets NEXT_PUBLIC_API_URL at build time, so browser calls go to the portal's
+# own origin via its /api/proxy route, and SSR uses the internal `api` alias
+# on the :8000 entrypoint (defined here and reachable in-cluster only).
+
+http:
+  routers:
+
+    # ── Tenant portals (DNS verified -> 75.119.154.177) ───────────────────────
+    portal-bedrock:
+      rule: "Host(`bedrock.imarafinance.africa`)"
+      service: portal-bedrock
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    portal-imarishamaisha:
+      rule: "Host(`imarishamaisha.imarafinance.africa`)"
+      service: portal-imarishamaisha
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    portal-sandbox:
+      rule: "Host(`sandbox.imarafinance.africa`)"
+      service: portal-sandbox
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    portal-bongobing:
+      rule: "Host(`bongobing.imarafinance.africa`)"
+      service: portal-bongobing
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    # ── Fineract API — INTERNAL only (portal SSR via http://api:8000) ─────────
+    # This is the read/write split. No TLS, never published to the host.
+    api-read-internal:
+      rule: "Host(`api`) && (Method(`GET`) || Method(`HEAD`))"
+      service: fineract-read
+      priority: 100
+      entryPoints: [internal]
+
+    api-write-internal:
+      rule: "Host(`api`)"
+      service: fineract-write
+      priority: 1
+      entryPoints: [internal]
+
+    # ── Public API (DNS created 2026-08-09) — same split as the internal pair ──
+    api-read-public:
+      rule: "Host(`api.imarafinance.africa`) && (Method(`GET`) || Method(`HEAD`))"
+      service: fineract-read
+      priority: 100
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    api-write-public:
+      rule: "Host(`api.imarafinance.africa`)"
+      service: fineract-write
+      priority: 1
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    # ── Traefik dashboard (DNS created 2026-08-09) — basic-auth + TLS ─────────
+    dashboard:
+      rule: "Host(`traefik.imarafinance.africa`)"
+      service: api@internal
+      middlewares: [admin-auth]
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    # ── Portainer (DNS 2026-08-09) — Docker control plane, so basic-auth IN
+    #    ADDITION to Portainer's own login (defence in depth on an admin panel).
+    portainer:
+      rule: "Host(`portainer.imarafinance.africa`)"
+      service: portainer
+      middlewares: [admin-auth]
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    # ── Admin UI (DNS 2026-08-09). No Traefik basic-auth: it is a product UI
+    #    with its own login, same treatment as the tenant portals.
+    portal-admin:
+      rule: "Host(`admin.imarafinance.africa`)"
+      service: portal-admin
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    # ── Docker registry (DNS 2026-08-09) — gives it real TLS, replacing the
+    #    plaintext :5000 endpoint whose basic-auth credentials crossed the wire
+    #    in the clear.
+    #    DELIBERATELY no `admin-auth` middleware: the registry runs its own
+    #    htpasswd auth and Docker uses a token/WWW-Authenticate handshake — a
+    #    Traefik basic-auth in front intercepts that flow and breaks
+    #    `docker login`/`docker push`.
+    registry:
+      rule: "Host(`registry.imarafinance.africa`)"
+      service: registry
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    # ── kafka-ui (DNS 2026-08-09). The container runs with AUTH_TYPE=DISABLED,
+    #    so Traefik's basic-auth is its ONLY access control — it must stay.
+    kafka-ui:
+      rule: "Host(`kafka.imarafinance.africa`)"
+      service: kafka-ui
+      middlewares: [admin-auth]
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+  middlewares:
+    admin-auth:
+      basicAuth:
+        usersFile: /etc/traefik/secrets/admin.htpasswd
+
+  services:
+    fineract-read:
+      loadBalancer:
+        servers:
+          - url: "http://fineract-read:8080"
+    fineract-write:
+      loadBalancer:
+        servers:
+          - url: "http://fineract-write:8080"
+
+    portal-bedrock:
+      loadBalancer:
+        servers:
+          - url: "http://fineract-neo-ui:3000"
+    portal-imarishamaisha:
+      loadBalancer:
+        servers:
+          - url: "http://imarisha-ui:3000"
+    portal-sandbox:
+      loadBalancer:
+        servers:
+          - url: "http://sandbox-ui:3000"
+    portal-bongobing:
+      loadBalancer:
+        servers:
+          - url: "http://bongobing-ui:3000"
+
+    kafka-ui:
+      loadBalancer:
+        servers:
+          - url: "http://kafka-ui:8080"
+
+    # portainer and registry were originally on caddy-net only; both were
+    # attached to fineract-net so these URLs resolve.
+    portainer:
+      loadBalancer:
+        servers:
+          - url: "http://portainer:9000"
+
+    portal-admin:
+      loadBalancer:
+        servers:
+          - url: "http://admin-ui:3000"
+
+    registry:
+      loadBalancer:
+        servers:
+          - url: "http://registry:5000"
