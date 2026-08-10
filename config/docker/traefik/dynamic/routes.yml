@@ -21,6 +21,19 @@ http:
       entryPoints:
         - web
 
+    # Scheduler / jobs API -> batch-manager, for BOTH reads and writes. These
+    # endpoints (/jobs, /scheduler) are served ONLY by the instance that owns the
+    # scheduler; read and write instances reject every method with
+    #   405 "Invalid method X used with request to this instance type".
+    # Higher priority than the method split so it wins for these paths regardless
+    # of GET/PUT/POST. Without this the portal's job list is always empty.
+    fineract-scheduler:
+      rule: "(Host(`api.localhost`) || Host(`api`)) && (PathPrefix(`/fineract-provider/api/v1/jobs`) || PathPrefix(`/fineract-provider/api/v1/scheduler`))"
+      service: fineract-manager
+      priority: 200
+      entryPoints:
+        - web
+
     # Everything else (POST/PUT/DELETE/PATCH) -> write. Deliberately no method
     # restriction: this is the catch-all, lower priority than the read router.
     fineract-write:
@@ -69,6 +82,12 @@ http:
       loadBalancer:
         servers:
           - url: "http://fineract-write:8080"
+
+    # batch-manager owns the scheduler; only it serves /jobs and /scheduler.
+    fineract-manager:
+      loadBalancer:
+        servers:
+          - url: "http://fineract-batch-manager:8080"
 
     portal:
       loadBalancer:
