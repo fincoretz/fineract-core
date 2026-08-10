@@ -51,6 +51,25 @@ http:
     #   tls: { certResolver: le }
     #   middlewares: [admin-auth]
 
+    # ── Scheduler / jobs API -> batch-manager (BOTH reads and writes) ─────────
+    # /jobs and /scheduler are served ONLY by the instance that owns the
+    # scheduler; read and write reject every method with 405 "Invalid method X
+    # used with request to this instance type". Priority 200 wins over the method
+    # split (100/1) for these paths. Without this the portal's Scheduler Jobs
+    # page is empty and no job can be edited/run.
+    api-scheduler-public:
+      rule: "Host(`api.imarafinance.africa`) && (PathPrefix(`/fineract-provider/api/v1/jobs`) || PathPrefix(`/fineract-provider/api/v1/scheduler`))"
+      service: fineract-manager
+      priority: 200
+      entryPoints: [websecure]
+      tls: { certResolver: le }
+
+    api-scheduler-internal:
+      rule: "Host(`api`) && (PathPrefix(`/fineract-provider/api/v1/jobs`) || PathPrefix(`/fineract-provider/api/v1/scheduler`))"
+      service: fineract-manager
+      priority: 200
+      entryPoints: [internal]
+
     # ── Fineract API — public (browser-facing) read/write split ────────────────
     # GET/HEAD → read (priority 100 wins over the write catch-all). See the
     # non-RESTful read-via-POST caveat in §4.3: POST reads (collectionsheet,
@@ -121,6 +140,12 @@ http:
       loadBalancer:
         servers:
           - url: "http://fineract-write:8080"
+
+    # batch-manager owns the scheduler; only it serves /jobs and /scheduler.
+    fineract-manager:
+      loadBalancer:
+        servers:
+          - url: "http://fineract-batch-manager:8080"
 
     # Tenant portals — same fineract-neo-ui image per container, one per tenant
     # (TENANT_ID differs). Names match the network aliases the retired Caddyfile used.
