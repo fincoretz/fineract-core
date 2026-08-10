@@ -350,6 +350,28 @@ and `fineract-worker` were never live Swarm stacks at all.) They must be deleted
 `bedrock/imarishamaisha/sandbox/bongobing/admin/registry` → 200, `traefik/kafka/portainer` → 401 (auth enforced),
 registry alias still resolving on `fineract-net`.
 
+## Scheduler API routing fix (2026-08-10)
+Found while testing neo-ui locally: the **Scheduler Jobs** page was empty and no job was editable.
+Root cause is **not** the UI — `/jobs` and `/scheduler` are served **only by the batch-manager**; read and write
+instances reject every method with `405 "Invalid method X used with request to this instance type"`. The Traefik
+method-split sent `GET` → read and mutations → write, so nothing reached the manager (which on UAT wasn't routed at all).
+
+Fix: a higher-priority Traefik router (`priority: 200`) sends
+`PathPrefix(/fineract-provider/api/v1/jobs)` and `…/scheduler` to a new `fineract-manager` service
+(`http://fineract-batch-manager:8080`), for both the internal `api` alias and the public `api.` host. Added to all three
+route files (`dynamic/routes.yml` local, `dynamic-prod/routes.yml`, `dynamic-prod/routes.uat.yml`).
+
+**Verified locally (browser):** jobs list populated (41 jobs), edited job 2's cron and it persisted; **verified on UAT:**
+`GET /jobs` went from `405` (read) to `401` (manager — auth required, i.e. correct instance). Config-only hot-reload,
+no restart.
+
+Two neo-ui bugs found the same way (both pre-existing, shipped in `0.4.9`):
+- **Business-date update never worked** — `useUpdateBusinessDate` omitted the mandatory `locale`/`dateFormat`, so every
+  save (incl. the original Initialize button) 400'd. Fixed; verified in the browser (set BUSINESS_DATE, COB_DATE
+  auto-adjusted, persisted).
+- **Jobs list actions were icon-only, unlabeled** (looked view-only) and the **business-date empty state was a dead end**
+  (enabled-but-unset returns `[]`, not an error, so the Initialize button never showed). Both fixed.
+
 ## Phase 8 — Rollback plan
 - **Routing/app failure:** redeploy the Caddy stack + old `fineract-write` (prior image still in registry, tag pinned) — restores the pre-cutover state.
 - **Schema migrated + need to go back:** Liquibase is forward-only (§10 rollback note) → restore the Phase 3 `pg_dump` (or VM snapshot) before redeploying the old image.
