@@ -70,6 +70,20 @@ public class TenantRegistrationRepository {
     }
 
     /**
+     * The tenant's own database (schema) name, from its OLTP connection - used to open a direct connection to
+     * that tenant's DB when reading onboarding status. Empty if no such tenant is registered.
+     */
+    public Optional<String> findSchemaNameByIdentifier(final String tenantIdentifier) {
+        try {
+            return Optional.ofNullable(jdbcTemplate.queryForObject(
+                    "select c.schema_name from tenants t join tenant_server_connections c on c.id = t.oltp_id where t.identifier = ?",
+                    String.class, tenantIdentifier));
+        } catch (final EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
+    }
+
+    /**
      * Registers a new tenant: first a {@code tenant_server_connections} row describing how to reach the tenant's
      * own database, then a {@code tenants} row referencing it as both the OLTP and report connection.
      *

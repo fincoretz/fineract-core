@@ -112,6 +112,17 @@ public class TenantProvisioningApiResource {
         return toApiJsonSerializer.serialize(tenantProvisioningService.retrieveTenant(identifier));
     }
 
+    @GET
+    @Path("{identifier}/onboarding")
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Retrieve a tenant's onboarding checklist status", description = "Read-only status of the post-provisioning setup steps (business date, external-event types, SMS gateway, admin first-login), read server-side from the tenant's own database.")
+    public String retrieveOnboardingStatus(@PathParam("identifier") final String identifier) {
+        context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
+        validateCallerIsOnPlatformTenant();
+
+        return toApiJsonSerializer.serialize(tenantProvisioningService.retrieveOnboardingStatus(identifier));
+    }
+
     /**
      * Enforced independently of (and in addition to) the normal {@code CREATE_TENANT}/{@code READ_TENANT}
      * permission checks, so that even a user who somehow holds those permissions cannot provision or inspect
