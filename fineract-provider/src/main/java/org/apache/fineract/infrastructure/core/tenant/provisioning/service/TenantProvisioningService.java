@@ -27,6 +27,7 @@ import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.tenant.provisioning.data.CreateTenantRequest;
 import org.apache.fineract.infrastructure.core.tenant.provisioning.data.ProvisionedTenantData;
+import org.apache.fineract.infrastructure.core.tenant.provisioning.data.TenantOnboardingStatusData;
 import org.apache.fineract.infrastructure.core.tenant.provisioning.data.TenantProvisioningJobData;
 import org.apache.fineract.infrastructure.core.tenant.provisioning.exception.TenantAlreadyExistsException;
 import org.apache.fineract.infrastructure.core.tenant.provisioning.exception.TenantNotFoundException;
@@ -45,6 +46,7 @@ public class TenantProvisioningService {
     private final TenantProvisioningJobRepository jobRepository;
     private final TenantRegistrationRepository tenantRegistrationRepository;
     private final TenantProvisioningAsyncWorker asyncWorker;
+    private final TenantOnboardingStatusReader onboardingStatusReader;
 
     public TenantProvisioningJobData retrieveJob(final Long jobId) {
         return jobRepository.findById(jobId);
@@ -57,6 +59,16 @@ public class TenantProvisioningService {
     public ProvisionedTenantData retrieveTenant(final String tenantIdentifier) {
         return tenantRegistrationRepository.findByIdentifier(tenantIdentifier)
                 .orElseThrow(() -> new TenantNotFoundException(tenantIdentifier));
+    }
+
+    /**
+     * Read-only onboarding checklist for a tenant, read directly from that tenant's database. The tenant must
+     * already be registered (its schema name comes from the registry).
+     */
+    public TenantOnboardingStatusData retrieveOnboardingStatus(final String tenantIdentifier) {
+        final String schemaName = tenantRegistrationRepository.findSchemaNameByIdentifier(tenantIdentifier)
+                .orElseThrow(() -> new TenantNotFoundException(tenantIdentifier));
+        return onboardingStatusReader.read(tenantIdentifier, schemaName);
     }
 
     /**
