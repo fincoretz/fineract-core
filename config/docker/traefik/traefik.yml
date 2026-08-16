@@ -1,0 +1,49 @@
+# Traefik static configuration for the split-instance edge.
+# See DEPLOYMENT_REQUIREMENTS.md §4 (routing) and §9 (portal). Routing rules
+# themselves live in ./dynamic (file provider, hot-reloaded).
+#
+# This file is the form validated locally (plain HTTP on :80, *.localhost
+# hosts in ./dynamic). The staging deltas are called out inline below —
+# real domains, TLS termination, and network-scoping the dashboard.
+
+entryPoints:
+  web:
+    address: ":80"
+    # STAGING: redirect public HTTP to HTTPS. Do NOT enable a blanket redirect
+    # if internal service-to-service calls (e.g. the portal's SSR proxy hitting
+    # the `api` alias) traverse :80 in plain HTTP by design — redirect per
+    # public router instead, or give internal traffic its own entrypoint.
+    # http:
+    #   redirections:
+    #     entryPoint: { to: websecure, scheme: https }
+
+  # STAGING: TLS entrypoint. Enable together with a certificatesResolver below
+  # and `tls` on the public routers in ./dynamic.
+  # websecure:
+  #   address: ":443"
+
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+api:
+  dashboard: true
+  # NOTE: intentionally no `insecure: true`. The dashboard is served only via
+  # the auth-protected `dashboard` router in ./dynamic, never the wide-open
+  # :8080 API port.
+
+# STAGING: automatic TLS via Let's Encrypt. Wildcard certs (*.example.com)
+# require the DNS-01 challenge — configure your DNS provider. Blocked on the
+# final domain decision (DEPLOYMENT_REQUIREMENTS.md §12 open item).
+# certificatesResolvers:
+#   le:
+#     acme:
+#       email: ${ACME_EMAIL}
+#       storage: /letsencrypt/acme.json
+#       dnsChallenge:
+#         provider: <your-dns-provider>
+
+log:
+  level: INFO
+accessLog: {}

@@ -186,6 +186,17 @@ public class TenantDatabaseUpgradeService implements InitializingBean {
      * @param tenant
      * @throws LiquibaseException
      */
+    /**
+     * Runs the tenant-schema Liquibase migration for a single, already-registered tenant, on demand. Used when a
+     * tenant is registered while the application is already running (e.g. via the internal tenant-provisioning
+     * API) - {@link #afterPropertiesSet()} only migrates the tenants known at startup, so a newly-registered
+     * tenant needs this explicit trigger instead of waiting for the next full application restart.
+     */
+    public void upgradeTenant(String tenantIdentifier) throws LiquibaseException {
+        FineractPlatformTenant tenant = tenantDetailsService.loadTenantById(tenantIdentifier);
+        upgradeIndividualTenant(tenant);
+    }
+
     private void upgradeIndividualTenant(FineractPlatformTenant tenant) throws LiquibaseException {
         try {
             ThreadLocalContextUtil.setTenant(tenant);

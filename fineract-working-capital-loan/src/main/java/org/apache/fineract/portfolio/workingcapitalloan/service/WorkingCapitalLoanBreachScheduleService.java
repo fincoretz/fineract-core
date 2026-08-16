@@ -23,7 +23,6 @@ import java.time.LocalDate;
 import java.util.List;
 import org.apache.fineract.portfolio.workingcapitalloan.data.WorkingCapitalLoanBreachScheduleData;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
-import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanBreachAction;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanBreachSchedule;
 
 public interface WorkingCapitalLoanBreachScheduleService {
@@ -40,9 +39,17 @@ public interface WorkingCapitalLoanBreachScheduleService {
 
     void applyRepayment(Long loanId, LocalDate transactionDate, BigDecimal amount);
 
+    void applyRepaymentUndo(Long loanId, LocalDate transactionDate, BigDecimal amount);
+
     void evaluateBreach(WorkingCapitalLoan loan, LocalDate businessDate);
 
-    void rescheduleMinimumPayment(WorkingCapitalLoan loan, WorkingCapitalLoanBreachAction rescheduleAction);
+    /**
+     * Recalculates the schedule from the effective reschedule parameters resolved from the persisted RESCHEDULE
+     * actions; a newly created reschedule action must therefore be saved before this is called.
+     */
+    void rescheduleMinimumPayment(WorkingCapitalLoan loan);
 
     void recalculatePeriodsForPauses(WorkingCapitalLoan loan);
+
+    void reprocessBreachSchedule(WorkingCapitalLoan loan);
 }

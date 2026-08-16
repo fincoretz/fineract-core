@@ -144,6 +144,12 @@ public class ReadReportingServiceImpl implements ReadReportingService {
         return result;
     }
 
+    // Validates the value against its declared format type but always returns the raw String.
+    // Values are bound as unspecified (Types.OTHER) in GenericDataServiceImpl so PostgreSQL
+    // coerces each to its target column's type; returning a typed Long/Date here would instead
+    // force a bigint/date bind that cannot compare against a column of another category (e.g. the
+    // varchar currency_code column, or a numeric column reached via a parameter-options query
+    // whose format type cannot be resolved). Validation is retained purely as an input guard.
     private Object castParamValue(String value, String formatType) {
         if (value == null) {
             return null;
@@ -151,16 +157,21 @@ public class ReadReportingServiceImpl implements ReadReportingService {
         if ("NUMBER".equalsIgnoreCase(formatType) || "INTEGER".equalsIgnoreCase(formatType)) {
             try {
                 if (value.contains(".")) {
-                    return new BigDecimal(value);
+                    new BigDecimal(value);
+                } else {
+                    Long.parseLong(value);
                 }
-                return Long.parseLong(value);
             } catch (NumberFormatException e) {
                 throw new PlatformDataIntegrityException("error.msg.report.invalid.numeric.parameter",
                         "Parameter value '" + value + "' is not a valid number", e);
             }
-        }
-        if ("DATE".equalsIgnoreCase(formatType)) {
-            return java.sql.Date.valueOf(value);
+        } else if ("DATE".equalsIgnoreCase(formatType)) {
+            try {
+                java.sql.Date.valueOf(value);
+            } catch (IllegalArgumentException e) {
+                throw new PlatformDataIntegrityException("error.msg.report.invalid.date.parameter",
+                        "Parameter value '" + value + "' is not a valid date (expected yyyy-MM-dd)", e);
+            }
         }
         return value;
     }

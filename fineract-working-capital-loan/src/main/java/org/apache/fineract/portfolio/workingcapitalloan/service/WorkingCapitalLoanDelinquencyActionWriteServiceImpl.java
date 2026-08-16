@@ -55,7 +55,6 @@ public class WorkingCapitalLoanDelinquencyActionWriteServiceImpl implements Work
                 .findByWorkingCapitalLoanIdOrderById(workingCapitalLoanId);
 
         final WorkingCapitalLoanDelinquencyAction action = validator.validateAndParse(command, workingCapitalLoan, existing);
-        action.setWorkingCapitalLoan(workingCapitalLoan);
 
         final WorkingCapitalLoanDelinquencyAction saved = actionRepository.saveAndFlush(action);
         log.debug("Created WC loan delinquency action {} for loan {}", action.getAction(), workingCapitalLoanId);
@@ -63,7 +62,8 @@ public class WorkingCapitalLoanDelinquencyActionWriteServiceImpl implements Work
         if (DelinquencyAction.PAUSE.equals(action.getAction())) {
             rangeScheduleService.extendPeriodsForPause(workingCapitalLoan, action.getStartDate(), action.getEndDate());
         } else if (DelinquencyAction.RESCHEDULE.equals(action.getAction())) {
-            rangeScheduleService.rescheduleMinimumPayment(workingCapitalLoan, action);
+            rangeScheduleService.rescheduleMinimumPayment(workingCapitalLoan);
+            rangeScheduleService.reprocessDelinquencySchedule(workingCapitalLoan);
         } else if (DelinquencyAction.RESUME.equals(action.getAction())) {
             final WorkingCapitalLoanDelinquencyAction activePause = validator.findActivePauseForResume(existing,
                     DateUtils.getBusinessLocalDate());

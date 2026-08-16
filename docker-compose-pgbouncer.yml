@@ -1,0 +1,30 @@
+# Standalone PgBouncer stack — deploy this FIRST, on its own, to validate
+# connectivity before wiring Fineract instances to it.
+#
+# Deploy in Portainer: Stacks → Add Stack → paste this file (Web editor).
+# No local file mounts needed — config is baked into the image.
+#
+# Prerequisites:
+#   1. fineract_db container already running and reachable on fineract-net
+#   2. setup-auth.sql has been run against fineract_db (see that file's header)
+#   3. userlist.txt password (baked into the image) matches the password
+#      set in setup-auth.sql
+#   4. Portainer has this registry added: Registries → 75.119.154.177:5000
+
+services:
+  pgbouncer:
+    image: 75.119.154.177:5000/pgbouncer:latest
+    restart: unless-stopped
+    networks:
+      - fineract-net
+    ports:
+      - "5433:5432"    # external port 5433 so it doesn't collide with fineract_db's 5432
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "5432", "-U", "pgbouncer_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  fineract-net:
+    external: true

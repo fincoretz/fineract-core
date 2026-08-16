@@ -21,5 +21,9 @@ package org.apache.fineract.portfolio.workingcapitalloan.domain;
 public enum WorkingCapitalLoanBreachActionType {
     PAUSE, //
     RESUME, //
-    RESCHEDULE //
+    RESCHEDULE, //
+    RESET, //
+    UNDO_RESET, //
+    DISABLE, //
+    ENABLE //
 }

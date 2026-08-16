@@ -33,7 +33,7 @@ public interface WorkingCapitalLoanDelinquencyRangeScheduleService {
 
     boolean hasSchedule(Long loanId);
 
-    void applyRepayment(Long loanId, LocalDate transactionDate, BigDecimal amount);
+    void applyRepayment(WorkingCapitalLoan loan, LocalDate transactionDate, BigDecimal amount);
 
     void evaluateExpiredPeriods(WorkingCapitalLoan loan, LocalDate businessDate);
 
@@ -41,9 +41,21 @@ public interface WorkingCapitalLoanDelinquencyRangeScheduleService {
 
     void extendPeriodsForPause(WorkingCapitalLoan loan, LocalDate pauseStart, LocalDate pauseEnd);
 
-    void rescheduleMinimumPayment(WorkingCapitalLoan loan, WorkingCapitalLoanDelinquencyAction rescheduleAction);
+    /**
+     * Re-derives the base expectation of the current period and the boundaries of future periods from the effective
+     * reschedule parameters resolved from the persisted RESCHEDULE actions; a newly created reschedule action must
+     * therefore be saved before this is called. Amounts, the remaining-balance cap and expired-period evaluation are
+     * left to {@link #reprocessDelinquencySchedule(WorkingCapitalLoan)}, which the caller must invoke afterwards.
+     */
+    void rescheduleMinimumPayment(WorkingCapitalLoan loan);
 
     void resumeActivePause(WorkingCapitalLoan loan, WorkingCapitalLoanDelinquencyAction activePause,
             WorkingCapitalLoanDelinquencyAction resumeAction);
+
+    /**
+     * Rebuilds paid amounts and evaluation for all periods by replaying the principal portions of the repayment type
+     * transactions in chronological order.
+     */
+    void reprocessDelinquencySchedule(WorkingCapitalLoan loan);
 
 }

@@ -49,7 +49,7 @@ import org.apache.fineract.client.models.GetLoansLoanIdResponse;
 import org.apache.fineract.client.models.PostLoansDelinquencyActionRequest;
 import org.apache.fineract.client.models.PostLoansDelinquencyActionResponse;
 import org.apache.fineract.client.models.PostLoansResponse;
-import org.apache.fineract.test.api.ApiProperties;
+import org.apache.fineract.test.api.FineractClientConfiguration;
 import org.apache.fineract.test.data.DelinquencyRange;
 import org.apache.fineract.test.data.LoanStatus;
 import org.apache.fineract.test.helper.ErrorMessageHelper;
@@ -69,27 +69,16 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
     public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(DATE_FORMAT);
 
     private final FineractFeignClient fineractClient;
-    private final ApiProperties apiProperties;
+    private final FineractClientConfiguration fineractClientConfiguration;
     private final EventAssertion eventAssertion;
     private final EventCheckHelper eventCheckHelper;
-
-    private FineractFeignClient createClientForUser(String username, String password) {
-        String baseUrl = apiProperties.getBaseUrl();
-        String tenantId = apiProperties.getTenantId();
-        long readTimeout = apiProperties.getReadTimeout();
-        String apiBaseUrl = baseUrl + "/fineract-provider/api/";
-
-        return FineractFeignClient.builder().baseUrl(apiBaseUrl).credentials(username, password).tenantId(tenantId)
-                .disableSslVerification(true).connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout((int) readTimeout, java.util.concurrent.TimeUnit.SECONDS).build();
-    }
 
     @Then("Admin checks that delinquency range is: {string} and has delinquentDate {string}")
     public void checkDelinquencyRange(String range, String delinquentDateExpected) {
         PostLoansResponse loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         Long loanId = loanResponse.getLoanId();
 
-        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveLoan(loanId, Map.of("associations", "collection")));
+        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveOneLoan(loanId, Map.of("associations", "collection")));
         Integer loanStatus = loanDetails.getStatus().getId() == null ? null : loanDetails.getStatus().getId().intValue();
 
         if (!LoanStatus.SUBMITTED_AND_PENDING_APPROVAL.value.equals(loanStatus) && !LoanStatus.APPROVED.value.equals(loanStatus)) {
@@ -127,7 +116,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         String expectedDelinquencyRangeValue = expectedDelinquencyRange.getValue();
 
         List<GetDelinquencyTagHistoryResponse> delinquencyHistoryDetails = ok(
-                () -> fineractClient.loans().getDelinquencyTagHistory(loanId));
+                () -> fineractClient.loans().retrieveDelinquencyTagHistoryLoan(loanId));
 
         String actualDelinquencyRangeValue = DelinquencyRange.NO_DELINQUENCY.value;
         String actualDelinquencyAddedOnDate = "";
@@ -153,7 +142,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         PostLoansResponse loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         Long loanId = loanResponse.getLoanId();
 
-        List<GetDelinquencyTagHistoryResponse> body = ok(() -> fineractClient.loans().getDelinquencyTagHistory(loanId));
+        List<GetDelinquencyTagHistoryResponse> body = ok(() -> fineractClient.loans().retrieveDelinquencyTagHistoryLoan(loanId));
 
         for (int i = 0; i < body.size(); i++) {
             List<String> line = dataExpected.get(i + 1);
@@ -190,7 +179,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
                 .dateFormat(DATE_FORMAT)//
                 .locale(DEFAULT_LOCALE);//
 
-        PostLoansDelinquencyActionResponse response = ok(() -> fineractClient.loans().createLoanDelinquencyAction(loanId, request));
+        PostLoansDelinquencyActionResponse response = ok(() -> fineractClient.loans().createDelinquencyActionLoan(loanId, request));
         testContext().set(TestContextKey.LOAN_DELINQUENCY_ACTION_RESPONSE, response);
         eventCheckHelper.loanAccountDelinquencyPauseChangedBusinessEventCheck(loanId);
     }
@@ -209,9 +198,9 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
 
         String username = testContext().get(TestContextKey.CREATED_SIMPLE_USER_USERNAME);
         String password = testContext().get(TestContextKey.CREATED_SIMPLE_USER_PASSWORD);
-        FineractFeignClient userClient = createClientForUser(username, password);
+        FineractFeignClient userClient = fineractClientConfiguration.fineractFeignClientForUser(username, password);
 
-        PostLoansDelinquencyActionResponse response = ok(() -> userClient.loans().createLoanDelinquencyAction(loanId, request));
+        PostLoansDelinquencyActionResponse response = ok(() -> userClient.loans().createDelinquencyActionLoan(loanId, request));
         testContext().set(TestContextKey.LOAN_DELINQUENCY_ACTION_RESPONSE, response);
         eventCheckHelper.loanAccountDelinquencyPauseChangedBusinessEventCheck(loanId);
     }
@@ -233,9 +222,9 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
 
         String username = testContext().get(TestContextKey.CREATED_SIMPLE_USER_USERNAME);
         String password = testContext().get(TestContextKey.CREATED_SIMPLE_USER_PASSWORD);
-        FineractFeignClient userClient = createClientForUser(username, password);
+        FineractFeignClient userClient = fineractClientConfiguration.fineractFeignClientForUser(username, password);
 
-        CallFailedRuntimeException exception = fail(() -> userClient.loans().createLoanDelinquencyAction(loanId, request));
+        CallFailedRuntimeException exception = fail(() -> userClient.loans().createDelinquencyActionLoan(loanId, request));
 
         assertThat(exception.getStatus()).as(ErrorMessageHelper.wrongErrorCode(exception.getStatus(), errorCodeExpected))
                 .isEqualTo(errorCodeExpected);
@@ -258,7 +247,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
                 .dateFormat(DATE_FORMAT)//
                 .locale(DEFAULT_LOCALE);//
 
-        PostLoansDelinquencyActionResponse response = ok(() -> fineractClient.loans().createLoanDelinquencyAction(loanId, request));
+        PostLoansDelinquencyActionResponse response = ok(() -> fineractClient.loans().createDelinquencyActionLoan(loanId, request));
         testContext().set(TestContextKey.LOAN_DELINQUENCY_ACTION_RESPONSE, response);
         eventCheckHelper.loanAccountDelinquencyPauseChangedBusinessEventCheck(loanId);
     }
@@ -277,7 +266,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
                 .locale(DEFAULT_LOCALE);//
 
         PostLoansDelinquencyActionResponse response = ok(
-                () -> fineractClient.loans().createLoanDelinquencyActionByExternalId(loanExternalId, request));
+                () -> fineractClient.loans().createDelinquencyActionLoanByExternalId(loanExternalId, request));
         testContext().set(TestContextKey.LOAN_DELINQUENCY_ACTION_RESPONSE, response);
         eventCheckHelper.loanAccountDelinquencyPauseChangedBusinessEventCheck(loanId);
     }
@@ -295,7 +284,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
                 .locale(DEFAULT_LOCALE);//
 
         PostLoansDelinquencyActionResponse response = ok(
-                () -> fineractClient.loans().createLoanDelinquencyActionByExternalId(loanExternalId, request));
+                () -> fineractClient.loans().createDelinquencyActionLoanByExternalId(loanExternalId, request));
         testContext().set(TestContextKey.LOAN_DELINQUENCY_ACTION_RESPONSE, response);
         eventCheckHelper.loanAccountDelinquencyPauseChangedBusinessEventCheck(loanId);
     }
@@ -308,7 +297,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         List<List<String>> data = table.asLists();
         int nrOfLinesExpected = data.size() - 1;
 
-        List<GetDelinquencyActionsResponse> response = ok(() -> fineractClient.loans().getLoanDelinquencyActions(loanId));
+        List<GetDelinquencyActionsResponse> response = ok(() -> fineractClient.loans().retrieveDelinquencyActionsLoan(loanId));
         int nrOfLinesActual = response.size();
 
         assertThat(nrOfLinesActual)//
@@ -477,7 +466,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         PostLoansResponse loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         Long loanId = loanResponse.getLoanId();
 
-        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveLoan(loanId, Map.of("associations", "collection")));
+        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveOneLoan(loanId, Map.of("associations", "collection")));
         List<GetLoansLoanIdLoanInstallmentLevelDelinquency> installmentLevelDelinquency = loanDetails.getDelinquent()
                 .getInstallmentLevelDelinquency() == null ? null : loanDetails.getDelinquent().getInstallmentLevelDelinquency();
         assertThat(installmentLevelDelinquency).isNull();
@@ -493,7 +482,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         String expectedDelinquencyRangeValue = expectedDelinquencyRange.getValue();
         expectedValuesList.set(0, expectedDelinquencyRangeValue);
 
-        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveLoan(loanId, Map.of("associations", "collection")));
+        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveOneLoan(loanId, Map.of("associations", "collection")));
         String actualDelinquencyRangeValue = loanDetails.getDelinquencyRange() == null ? "NO_DELINQUENCY"
                 : loanDetails.getDelinquencyRange().getClassification();
         GetLoansLoanIdDelinquencySummary delinquent = loanDetails.getDelinquent();
@@ -531,7 +520,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         String expectedDelinquencyRangeValue = expectedDelinquencyRange.getValue();
         expectedValuesList.set(0, expectedDelinquencyRangeValue);
 
-        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveLoan(loanId, Map.of("associations", "collection")));
+        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveOneLoan(loanId, Map.of("associations", "collection")));
 
         String actualDelinquencyRangeValue = loanDetails.getDelinquencyRange() == null ? "NO_DELINQUENCY"
                 : loanDetails.getDelinquencyRange().getClassification();
@@ -552,7 +541,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         PostLoansResponse loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         Long loanId = loanResponse.getLoanId();
 
-        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveLoan(loanId, Map.of("associations", "collection")));
+        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveOneLoan(loanId, Map.of("associations", "collection")));
         List<GetLoansLoanIdLoanInstallmentLevelDelinquency> installmentLevelDelinquency = loanDetails.getDelinquent()
                 .getInstallmentLevelDelinquency();
 
@@ -581,7 +570,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         Long loanId = loanResponse.getLoanId();
 
         List<List<String>> expectedData = table.asLists();
-        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveLoan(loanId, Map.of("associations", "collection")));
+        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveOneLoan(loanId, Map.of("associations", "collection")));
 
         List<GetLoansLoanIdDelinquencyPausePeriod> delinquencyPausePeriods = loanDetails.getDelinquent().getDelinquencyPausePeriods();
 
@@ -606,7 +595,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         PostLoansResponse loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         Long loanId = loanResponse.getLoanId();
 
-        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveLoan(loanId, Map.of("associations", "collection")));
+        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveOneLoan(loanId, Map.of("associations", "collection")));
         String actualDate = FORMATTER.format(loanDetails.getDelinquent().getNextPaymentDueDate());
 
         assertThat(actualDate).as(ErrorMessageHelper.wrongDataInNextPaymentDueDate(actualDate, expectedDate)).isEqualTo(expectedDate);
@@ -635,7 +624,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         PostLoansResponse loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         Long loanId = loanResponse.getLoanId();
 
-        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveLoan(loanId, Map.of("associations", "collection")));
+        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveOneLoan(loanId, Map.of("associations", "collection")));
         DelinquencyRangeData delinquencyRange = loanDetails.getDelinquencyRange();
         GetLoansLoanIdDelinquencySummary delinquent = loanDetails.getDelinquent();
 
@@ -707,7 +696,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         PostLoansResponse loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         Long loanId = loanResponse.getLoanId();
 
-        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveLoan(loanId, Map.of("associations", "collection")));
+        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveOneLoan(loanId, Map.of("associations", "collection")));
 
         Double actualLastRepaymentAmount = loanDetails.getDelinquent().getLastRepaymentAmount().doubleValue();
         String actualLastRepaymentDate = FORMATTER.format(loanDetails.getDelinquent().getLastRepaymentDate());
@@ -739,7 +728,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
 
     private void errorMessageAssertationFeign(long loanId, PostLoansDelinquencyActionRequest request, int errorCodeExpected,
             String errorMessageExpected) {
-        CallFailedRuntimeException exception = fail(() -> fineractClient.loans().createLoanDelinquencyAction(loanId, request));
+        CallFailedRuntimeException exception = fail(() -> fineractClient.loans().createDelinquencyActionLoan(loanId, request));
 
         assertThat(exception.getStatus()).as(ErrorMessageHelper.wrongErrorCode(exception.getStatus(), errorCodeExpected))
                 .isEqualTo(errorCodeExpected);

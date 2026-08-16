@@ -33,4 +33,5 @@
      <include file="parts/0010_set_datetime_precision.xml" relativeToChangelogFile="true"/>
      <include file="parts/0011_standardize_character_set_and_collation.xml" relativeToChangelogFile="true"/>
      <include file="parts/0012_m_tenant_oidc_config.xml" relativeToChangelogFile="true"/>
+     <include file="parts/0013_tenant_provisioning_job.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

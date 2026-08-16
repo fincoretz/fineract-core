@@ -39,13 +39,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.boot.FineractProfiles;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanStatus;
-import org.apache.fineract.portfolio.workingcapitalloan.data.InternalWorkingCapitalLoanPaymentRequest;
 import org.apache.fineract.portfolio.workingcapitalloan.data.ProjectedAmortizationScheduleGenerateRequest;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
+import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanBalance;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanDisbursementDetails;
 import org.apache.fineract.portfolio.workingcapitalloan.exception.WorkingCapitalLoanNotFoundException;
+import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanBalanceRepository;
 import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanRepository;
-import org.apache.fineract.portfolio.workingcapitalloan.service.InternalWorkingCapitalLoanPaymentService;
 import org.apache.fineract.portfolio.workingcapitalloan.service.WorkingCapitalLoanAmortizationScheduleWriteService;
 import org.apache.fineract.portfolio.workingcapitalloan.service.WorkingCapitalLoanDelinquencyRangeScheduleService;
 import org.springframework.beans.factory.InitializingBean;
@@ -63,8 +63,8 @@ public class InternalWorkingCapitalLoanApiResource implements InitializingBean {
 
     private final WorkingCapitalLoanAmortizationScheduleWriteService writeService;
     private final WorkingCapitalLoanRepository loanRepository;
+    private final WorkingCapitalLoanBalanceRepository balanceRepository;
     private final WorkingCapitalLoanDelinquencyRangeScheduleService rangeScheduleService;
-    private final InternalWorkingCapitalLoanPaymentService paymentService;
 
     @Override
     @SuppressFBWarnings("SLF4J_SIGN_ONLY_FORMAT")
@@ -101,7 +101,8 @@ public class InternalWorkingCapitalLoanApiResource implements InitializingBean {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Activate a Working Capital Loan (testing only)", description = """
-            Sets the WC loan status to ACTIVE and records a disbursement detail with the given date.
+            Sets the WC loan status to ACTIVE, records a disbursement detail with the given date and
+            initializes the loan balance as a real disbursement would.
             Also generates the initial delinquency range schedule period if a delinquency bucket is configured.
 
             DO NOT USE THIS IN PRODUCTION! Disbursement must go through the proper disbursement flow.""")
@@ -122,6 +123,13 @@ public class InternalWorkingCapitalLoanApiResource implements InitializingBean {
 
         loan.setLoanStatus(LoanStatus.ACTIVE);
         loanRepository.saveAndFlush(loan);
+
+        // The balance must reflect the faked disbursement (as the real disbursement flow does),
+        // otherwise the schedule generation caps the period to the zero remaining balance.
+        final WorkingCapitalLoanBalance balance = balanceRepository.findByWcLoan_Id(loanId)
+                .orElseGet(() -> WorkingCapitalLoanBalance.createFor(loan));
+        balance.applyDisbursement(loan.getApprovedPrincipal());
+        balanceRepository.saveAndFlush(balance);
 
         rangeScheduleService.generateInitialPeriod(loan);
 
@@ -152,22 +160,6 @@ public class InternalWorkingCapitalLoanApiResource implements InitializingBean {
 
         log.info("Generated next delinquency period for WC loan {} with business date {} (TEST ONLY)", loanId, businessDate);
         return Response.ok().build();
-    }
-
-    @POST
-    @Path("{loanId}/internalMakePayment")
-    @Consumes({ MediaType.APPLICATION_JSON })
-    @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Makes Payment (testing)", description = """
-            Makes payment for testing purposes.
-
-            DO NOT USE THIS IN PRODUCTION! In the real flow, the schedule will be \
-            generated during loan approval/disbursement from the loan and product data.""")
-    @ApiResponses({ @ApiResponse(responseCode = "200", description = "OK"),
-            @ApiResponse(responseCode = "404", description = "Working Capital Loan not found") })
-    public void payment(@PathParam("loanId") @Parameter(description = "loanId") final Long loanId,
-            final InternalWorkingCapitalLoanPaymentRequest request) {
-        paymentService.makePayment(loanId, request.getAmount(), request.getTransactionDate());
     }
 
 }

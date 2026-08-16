@@ -31,7 +31,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.avro.loan.v1.LoanTransactionAdjustmentDataV1;
@@ -58,7 +57,7 @@ import org.apache.fineract.client.models.PostLoansRequest;
 import org.apache.fineract.client.models.PostLoansResponse;
 import org.apache.fineract.client.models.PutLoanOriginatorsRequest;
 import org.apache.fineract.client.models.PutLoanOriginatorsResponse;
-import org.apache.fineract.test.api.ApiProperties;
+import org.apache.fineract.test.api.FineractClientConfiguration;
 import org.apache.fineract.test.factory.LoanRequestFactory;
 import org.apache.fineract.test.helper.ErrorMessageHelper;
 import org.apache.fineract.test.messaging.EventAssertion;
@@ -85,7 +84,7 @@ public class LoanOriginationStepDef extends AbstractStepDef {
     private final LoanRequestFactory loanRequestFactory;
     private final EventAssertion eventAssertion;
     private final EventStore eventStore;
-    private final ApiProperties apiProperties;
+    private final FineractClientConfiguration fineractClientConfiguration;
 
     // --- Originator CRUD steps ---
 
@@ -429,7 +428,7 @@ public class LoanOriginationStepDef extends AbstractStepDef {
         PostLoansRequest loansRequest = loanRequestFactory.defaultLoansRequest(clientId).submittedOnDate(submitDate)
                 .expectedDisbursementDate(submitDate).addOriginatorsItem(originatorData);
 
-        PostLoansResponse response = ok(() -> fineractClient.loans().calculateLoanScheduleOrSubmitLoanApplication(loansRequest, Map.of()));
+        PostLoansResponse response = ok(() -> fineractClient.loans().calculateOrSubmitLoanApplication(loansRequest, Map.of()));
 
         assertThat(response.getLoanId()).isNotNull();
         testContext().set(TestContextKey.LOAN_CREATE_RESPONSE, response);
@@ -448,7 +447,7 @@ public class LoanOriginationStepDef extends AbstractStepDef {
                 .approvedLoanAmount(new BigDecimal(approvedAmount)).expectedDisbursementDate(expectedDisbursementDate);
 
         PostLoansLoanIdResponse loanApproveResponse = ok(
-                () -> fineractClient.loans().stateTransitions(loanId, approveRequest, Map.of("command", "approve")));
+                () -> fineractClient.loans().handleCommandsLoan(loanId, approveRequest, Map.of("command", "approve")));
         testContext().set(TestContextKey.LOAN_APPROVAL_RESPONSE, loanApproveResponse);
         log.info("Loan {} approved (event check skipped for separate verification)", loanId);
     }
@@ -653,7 +652,7 @@ public class LoanOriginationStepDef extends AbstractStepDef {
         long loanId = loanResponse.getLoanId();
 
         GetLoansLoanIdResponse loanDetails = ok(
-                () -> fineractClient.loans().retrieveLoan(loanId, Map.<String, Object>of("associations", "transactions")));
+                () -> fineractClient.loans().retrieveOneLoan(loanId, Map.<String, Object>of("associations", "transactions")));
         Long waiveTransactionId = loanDetails.getTransactions().stream()
                 .filter(t -> "loanTransactionType.waiveCharges".equals(t.getType().getCode())).map(GetLoansLoanIdTransactions::getId)
                 .findFirst().orElseThrow(() -> new IllegalStateException("Waiver transaction not found on loan " + loanId));
@@ -708,7 +707,7 @@ public class LoanOriginationStepDef extends AbstractStepDef {
         long loanId = getLoanId();
         String expectedExternalId = testContext().get(TestContextKey.ORIGINATOR_EXTERNAL_ID);
 
-        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveLoan(loanId,
+        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveOneLoan(loanId,
                 Map.of("staffInSelectedOfficeOnly", "false", "associations", "transactions")));
         GetLoansLoanIdTransactions accrualTransaction = loanDetails.getTransactions().stream()
                 .filter(t -> date.equals(FORMATTER.format(t.getDate())) && "Accrual".equals(t.getType().getValue()))
@@ -897,7 +896,7 @@ public class LoanOriginationStepDef extends AbstractStepDef {
     }
 
     private List<GetLoansLoanIdOriginatorData> retrieveLoanOriginators(long loanId, String association) {
-        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveLoan(loanId,
+        GetLoansLoanIdResponse loanDetails = ok(() -> fineractClient.loans().retrieveOneLoan(loanId,
                 Map.of("staffInSelectedOfficeOnly", false, "associations", association, "exclude", "", "fields", "")));
         return loanDetails.getOriginators();
     }
@@ -910,11 +909,7 @@ public class LoanOriginationStepDef extends AbstractStepDef {
     private FineractFeignClient createClientForUser() {
         String username = testContext().get(TestContextKey.CREATED_SIMPLE_USER_USERNAME);
         String password = testContext().get(TestContextKey.CREATED_SIMPLE_USER_PASSWORD);
-        String apiBaseUrl = apiProperties.getBaseUrl() + "/fineract-provider/api/";
-
-        return FineractFeignClient.builder().baseUrl(apiBaseUrl).credentials(username, password).tenantId(apiProperties.getTenantId())
-                .disableSslVerification(true).connectTimeout(60, TimeUnit.SECONDS)
-                .readTimeout((int) apiProperties.getReadTimeout(), TimeUnit.SECONDS).build();
+        return fineractClientConfiguration.fineractFeignClientForUser(username, password);
     }
 
     private void assertOriginatorsMatch(List<GetLoansLoanIdOriginatorData> expectedOriginators, List<OriginatorDetailsV1> actualOriginators,

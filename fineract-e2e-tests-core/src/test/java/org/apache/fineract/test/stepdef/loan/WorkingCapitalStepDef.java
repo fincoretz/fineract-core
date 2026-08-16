@@ -30,7 +30,6 @@ import io.cucumber.datatable.DataTable;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -49,7 +48,6 @@ import org.apache.fineract.client.models.GetWorkingCapitalLoanDelinquencyRangeSc
 import org.apache.fineract.client.models.GetWorkingCapitalLoanProductsProductIdResponse;
 import org.apache.fineract.client.models.GetWorkingCapitalLoanProductsResponse;
 import org.apache.fineract.client.models.GetWorkingCapitalLoanProductsTemplateResponse;
-import org.apache.fineract.client.models.InternalWorkingCapitalLoanPaymentRequest;
 import org.apache.fineract.client.models.PaymentTypeToGLAccountMapper;
 import org.apache.fineract.client.models.PostAllowAttributeOverrides;
 import org.apache.fineract.client.models.PostPaymentAllocation;
@@ -128,6 +126,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     public static final String LOCALE_FIELD_NAME = "locale";
 
     private static final long NON_EXISTENT_GL_ACCOUNT_ID = 999999L;
+    private static final int RANDOM_NAME_SUFFIX_LENGTH = 10;
 
     private WorkingCapitalLoanProductsApi workingCapitalApi() {
         return fineractFeignClient.workingCapitalLoanProducts();
@@ -136,7 +135,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     @When("Admin creates a new Working Capital Loan Product")
     public void createWorkingCapitalLoanProduct() {
         final String workingCapitalProductDefaultName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
-                + Utils.randomStringGenerator("_", 10);
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest defaultWorkingCapitalLoanProductCreateRequest = workingCapitalRequestFactory
                 .defaultWorkingCapitalLoanProductRequest() //
                 .name(workingCapitalProductDefaultName); //
@@ -152,7 +151,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         final Long breachId = getWcBreachIdForFrequency(2, WorkingCapitalBreachFrequencyType.MONTHS.getCode());
         final Long nearBreachId = getWcNearBreachIdForFrequency(1, WorkingCapitalBreachFrequencyType.MONTHS.getCode());
 
-        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory.defaultWorkingCapitalLoanProductRequest() //
                 .name(name) //
                 .breachId(breachId) //
@@ -170,7 +169,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         final Long breachId = getWcBreachIdForFrequency(breachFrequency, breachFrequencyType);
         final Long nearBreachId = getWcNearBreachIdForFrequency(nearBreachFrequency, nearBreachFrequencyType);
 
-        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory.defaultWorkingCapitalLoanProductRequest() //
                 .name(name) //
                 .breachId(breachId) //
@@ -186,7 +185,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     public void createWorkingCapitalLoanProductWithoutBreachButNearBreachFailure() {
         final Long nearBreachId = getWcNearBreachIdForFrequency(1, WorkingCapitalBreachFrequencyType.MONTHS.getCode());
 
-        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory.defaultWorkingCapitalLoanProductRequest() //
                 .name(name) //
                 .nearBreachId(nearBreachId); //
@@ -206,7 +205,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         final Long breachId = getWcBreachIdForFrequency(breachFrequency, breachFrequencyType);
         final Long nearBreachId = getWcNearBreachIdForFrequency(nearBreachFrequency, nearBreachFrequencyType);
 
-        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory.defaultWorkingCapitalLoanProductRequest() //
                 .name(name) //
                 .breachId(breachId) //
@@ -275,7 +274,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     public void updateWorkingCapitalLoanProductWithoutBreachButNearBreachFailure() {
         final Long nearBreachId = getWcNearBreachIdForFrequency(1, WorkingCapitalBreachFrequencyType.MONTHS.getCode());
 
-        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         PutWorkingCapitalLoanProductsProductIdRequest defaultWorkingCapitalLoanProductUpdateRequest = new PutWorkingCapitalLoanProductsProductIdRequest()
                 .name(name) //
                 .nearBreachId(nearBreachId); //
@@ -295,7 +294,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         final Long breachId = breachCreateResponse.getResourceId();
         testContext().set(WORKING_CAPITAL_BREACH_ID, breachId);
 
-        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory.defaultWorkingCapitalLoanProductRequest() //
                 .name(name) //
                 .breachId(breachId);
@@ -313,7 +312,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         final Long breachId = breachCreateResponse.getResourceId();
         testContext().set(TestContextKey.WORKING_CAPITAL_BREACH_ID, breachId);
 
-        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory
                 .defaultWorkingCapitalLoanProductAllowAttributesOverrideRequest() //
                 .name(name) //
@@ -345,7 +344,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         final Integer breachGraceDays = breachGraceDaysStr != null && !breachGraceDaysStr.isEmpty() ? Integer.valueOf(breachGraceDaysStr)
                 : null;
 
-        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory
                 .defaultWorkingCapitalLoanProductAllowAttributesOverrideRequest() //
                 .name(name) //
@@ -389,7 +388,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         final Integer breachGraceDays = breachGraceDaysStr != null && !breachGraceDaysStr.isEmpty() ? Integer.valueOf(breachGraceDaysStr)
                 : null;
 
-        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory
                 .defaultWorkingCapitalLoanProductAllowAttributesOverrideRequest() //
                 .name(name) //
@@ -407,7 +406,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     @When("Admin creates a new Working Capital Loan Product with existing WC Delinquency Bucket")
     public void createWorkingCapitalLoanProductWithExistingDelinquencyBucket() {
         final Long bucketId = TestContext.GLOBAL.get(TestContextKey.DELINQUENCY_BUCKET_ID);
-        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory.defaultWorkingCapitalLoanProductRequest() //
                 .name(name) //
                 .delinquencyBucketId(bucketId);
@@ -420,7 +419,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     @When("Admin creates a new Working Capital Loan Product with existing WC Breach")
     public void createWorkingCapitalLoanProductWithExistingBreach() {
         final Long breachId = TestContext.INSTANCE.get(TestContextKey.WORKING_CAPITAL_BREACH_ID);
-        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory.defaultWorkingCapitalLoanProductRequest() //
                 .name(name) //
                 .breachId(breachId);
@@ -433,7 +432,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     @When("Admin creates a new Working Capital Loan Product with external-id")
     public void createWorkingCapitalLoanProductWithExternalId() {
         final String workingCapitalProductDefaultName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
-                + Utils.randomStringGenerator("_", 10);
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest defaultWorkingCapitalLoanProductCreateRequest = workingCapitalRequestFactory
                 .defaultWorkingCapitalLoanProductRequest() //
                 .name(workingCapitalProductDefaultName) //
@@ -454,7 +453,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     @Then("Admin failed to create a new Working Capital Loan Product field {string} with max length data {int} while max allowed is {int}")
     public void createWorkingCapitalLoanProductWithMaxLengthDataFailed(String fieldName, int maxLengthValue, int maxAllowedLengthValue) {
         final String workingCapitalProductDefaultName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
-                + Utils.randomStringGenerator("_", 10);
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest defaultWorkingCapitalLoanProductCreateRequest = workingCapitalRequestFactory
                 .defaultWorkingCapitalLoanProductRequest() //
                 .name(workingCapitalProductDefaultName); //
@@ -485,7 +484,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     @Then("Admin failed to create a new Working Capital Loan Product with invalid number of payment allocation rules")
     public void createWorkingCapitalLoanProductWithInvalidNumberPaymentAllocationFailed() {
         final String workingCapitalProductDefaultName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
-                + Utils.randomStringGenerator("_", 10);
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest defaultWorkingCapitalLoanProductCreateRequest = workingCapitalRequestFactory
                 .defaultWorkingCapitalLoanProductRequest() //
                 .name(workingCapitalProductDefaultName) //
@@ -496,10 +495,24 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         checkCreateWorkingCapitalLoanProductWithInvalidDataFailure(defaultWorkingCapitalLoanProductCreateRequest, 400, errorMessage);
     }
 
+    @Then("Admin failed to create a new Working Capital Loan Product with payment allocation rules missing DEFAULT transaction type")
+    public void createWorkingCapitalLoanProductWithoutDefaultPaymentAllocationFailed() {
+        final String workingCapitalProductDefaultName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
+        final PostWorkingCapitalLoanProductsRequest defaultWorkingCapitalLoanProductCreateRequest = workingCapitalRequestFactory
+                .defaultWorkingCapitalLoanProductRequest() //
+                .name(workingCapitalProductDefaultName) //
+                .paymentAllocation(
+                        workingCapitalRequestFactory.paymentAllocationRulesWithoutDefaultForWorkingCapitalLoanProductCreateRequest());
+
+        String errorMessage = ErrorMessageHelper.paymentAllocationRulesWithoutDefaultFailure();
+        checkCreateWorkingCapitalLoanProductWithInvalidDataFailure(defaultWorkingCapitalLoanProductCreateRequest, 400, errorMessage);
+    }
+
     @Then("Admin failed to create a new Working Capital Loan Product with invalid value of payment allocation rules")
     public void createWorkingCapitalLoanProductWithInvalidPaymentAllocationFailed() {
         final String workingCapitalProductDefaultName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
-                + Utils.randomStringGenerator("_", 10);
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest defaultWorkingCapitalLoanProductCreateRequest = workingCapitalRequestFactory
                 .defaultWorkingCapitalLoanProductRequest() //
                 .name(workingCapitalProductDefaultName) //
@@ -512,7 +525,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     @When("Admin updates a Working Capital Loan Product")
     public void updateWorkingCapitalLoanProduct() {
         final String workingCapitalProductDefaultName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
-                + Utils.randomStringGenerator("_", 10);
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final String workingCapitalProductDefaultShortName = Utils.randomStringGenerator(4);
         final PutWorkingCapitalLoanProductsProductIdRequest workingCapitalLoanProductUpdateRequest = workingCapitalRequestFactory
                 .defaultWorkingCapitalLoanProductRequestUpdate() //
@@ -535,7 +548,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     @When("Admin updates a Working Capital Loan Product via external-id")
     public void updateWorkingCapitalLoanProductViaExternalId() {
         final String workingCapitalProductDefaultName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
-                + Utils.randomStringGenerator("_", 10);
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final String workingCapitalProductDefaultShortName = Utils.randomStringGenerator(4);
         final PutWorkingCapitalLoanProductsProductIdRequest workingCapitalLoanProductUpdateRequest = workingCapitalRequestFactory
                 .defaultWorkingCapitalLoanProductRequestUpdate() //
@@ -710,10 +723,10 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     @When("Admin creates a new Working Capital Loan Product with accounting rule {string}")
     public void createWorkingCapitalLoanProductWithAccountingRule(final String accountingRule) {
         final String workingCapitalProductDefaultName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
-                + Utils.randomStringGenerator("_", 10);
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request;
-        if ("CASH_BASED".equals(accountingRule)) {
-            request = workingCapitalRequestFactory.defaultWorkingCapitalLoanProductRequestWithCashAccounting()//
+        if ("ACC_DEF_REV_AM".equals(accountingRule)) {
+            request = workingCapitalRequestFactory.defaultWorkingCapitalLoanProductRequestWithAccrualAccounting()//
                     .name(workingCapitalProductDefaultName);
         } else {
             request = workingCapitalRequestFactory.defaultWorkingCapitalLoanProductRequest()//
@@ -725,12 +738,12 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         testContext().set(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_CREATE_REQUEST, request);
     }
 
-    @When("Admin creates a new Working Capital Loan Product with Cash based accounting for GL mapping verification")
-    public void createWorkingCapitalLoanProductWithCashAccountingForGLMappingVerification() {
+    @When("Admin creates a new Working Capital Loan Product with Accrual with deferred revenue amortization accounting for GL mapping verification")
+    public void createWorkingCapitalLoanProductWithAccrualAccountingForGLMappingVerification() {
         final String workingCapitalProductDefaultName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
-                + Utils.randomStringGenerator("_", 10);
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory
-                .defaultWorkingCapitalLoanProductRequestWithDistinctCashAccountingMappings()//
+                .defaultWorkingCapitalLoanProductRequestWithDistinctAccrualAccountingMappings()//
                 .name(workingCapitalProductDefaultName);
 
         final PostWorkingCapitalLoanProductsResponse response = createWorkingCapitalLoanProduct(request);
@@ -751,7 +764,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         assertions.assertThat(product.getAccountingRule()).isNotNull();
         assertions.assertThat(product.getAccountingRule().getId()).isEqualTo(expectedAccountingRule);
 
-        if ("CASH_BASED".equals(expectedAccountingRule)) {
+        if ("ACC_DEF_REV_AM".equals(expectedAccountingRule)) {
             assertions.assertThat(product.getAccountingMappings()).isNotNull();
             assertions.assertThat(product.getAccountingMappings()).isNotEmpty();
             assertions.assertThat(product.getAccountingMappings()).containsKey("fundSourceAccount");
@@ -770,28 +783,29 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         assertions.assertAll();
     }
 
-    @Then("Admin failed to create a new Working Capital Loan Product with Cash based accounting and missing required GL accounts")
-    public void createWorkingCapitalLoanProductWithCashAccountingMissingRequiredAccountsFailed() {
+    @Then("Admin failed to create a new Working Capital Loan Product with Accrual with deferred revenue amortization accounting and missing required GL accounts")
+    public void createWorkingCapitalLoanProductWithAccrualAccountingMissingRequiredAccountsFailed() {
         final String workingCapitalProductDefaultName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
-                + Utils.randomStringGenerator("_", 10);
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory.defaultWorkingCapitalLoanProductRequest()//
                 .name(workingCapitalProductDefaultName)//
-                .accountingRule(AccountingRuleEnum.CASH_BASED);
+                .accountingRule(AccountingRuleEnum.ACC_DEF_REV_AM);
         // Missing all required GL account IDs
 
         final CallFailedRuntimeException exception = fail(() -> workingCapitalApi().createWorkingCapitalLoanProduct(request, Map.of()));
         assertThat(exception.getStatus()).as(ErrorMessageHelper.incorrectExpectedValueInResponse()).isEqualTo(400);
     }
 
-    @When("Admin updates Working Capital Loan Product accounting rule from None to Cash based")
-    public void updateWorkingCapitalLoanProductAccountingNoneToCash() {
+    @When("Admin updates Working Capital Loan Product accounting rule from None to Accrual with deferred revenue amortization")
+    public void updateWorkingCapitalLoanProductAccountingNoneToAccrual() {
         final PostWorkingCapitalLoanProductsResponse createResponse = testContext()
                 .get(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_CREATE_RESPONSE);
         final Long resourceId = createResponse.getResourceId();
 
-        final PostWorkingCapitalLoanProductsRequest cashRequest = workingCapitalRequestFactory
-                .defaultWorkingCapitalLoanProductRequestWithCashAccounting();
-        final PutWorkingCapitalLoanProductsProductIdRequest updateRequest = buildCashBasedUpdateRequest(cashRequest);
+        final PostWorkingCapitalLoanProductsRequest accrualRequest = workingCapitalRequestFactory
+                .defaultWorkingCapitalLoanProductRequestWithAccrualAccounting();
+        final PutWorkingCapitalLoanProductsProductIdRequest updateRequest = buildAccrualWithDeferredRevenueAmortizationUpdateRequest(
+                accrualRequest);
 
         final PutWorkingCapitalLoanProductsProductIdResponse response = ok(
                 () -> workingCapitalApi().updateWorkingCapitalLoanProduct(resourceId, updateRequest, Map.of()));
@@ -800,8 +814,8 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         testContext().set(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_UPDATE_REQUEST, updateRequest);
     }
 
-    @When("Admin updates Working Capital Loan Product accounting rule from Cash based to None")
-    public void updateWorkingCapitalLoanProductAccountingCashToNone() {
+    @When("Admin updates Working Capital Loan Product accounting rule from Accrual with deferred revenue amortization to None")
+    public void updateWorkingCapitalLoanProductAccountingAccrualToNone() {
         final PostWorkingCapitalLoanProductsResponse createResponse = testContext()
                 .get(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_CREATE_RESPONSE);
         final Long resourceId = createResponse.getResourceId();
@@ -817,18 +831,18 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         testContext().set(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_UPDATE_REQUEST, updateRequest);
     }
 
-    @When("Admin updates GL account mappings on existing Cash based Working Capital Loan Product")
-    public void updateWCGLAccountMappingsOnExistingCashBasedProduct() {
+    @When("Admin updates GL account mappings on existing Accrual with deferred revenue amortization Working Capital Loan Product")
+    public void updateWCGLAccountMappingsOnExistingAccrualProduct() {
         final PostWorkingCapitalLoanProductsResponse createResponse = testContext()
                 .get(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_CREATE_RESPONSE);
         final Long resourceId = createResponse.getResourceId();
 
-        final PostWorkingCapitalLoanProductsRequest cashRequest = workingCapitalRequestFactory
-                .defaultWorkingCapitalLoanProductRequestWithCashAccounting();
+        final PostWorkingCapitalLoanProductsRequest accrualRequest = workingCapitalRequestFactory
+                .defaultWorkingCapitalLoanProductRequestWithAccrualAccounting();
 
         final PutWorkingCapitalLoanProductsProductIdRequest updateRequest = new PutWorkingCapitalLoanProductsProductIdRequest()//
                 .locale("en")//
-                .writeOffAccountId(cashRequest.getChargeOffExpenseAccountId());
+                .writeOffAccountId(accrualRequest.getChargeOffExpenseAccountId());
 
         final PutWorkingCapitalLoanProductsProductIdResponse response = ok(
                 () -> workingCapitalApi().updateWorkingCapitalLoanProduct(resourceId, updateRequest, Map.of()));
@@ -875,7 +889,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
 
         final SoftAssertions assertions = new SoftAssertions();
         assertions.assertThat(product.getAccountingRule()).isNotNull();
-        assertions.assertThat(product.getAccountingRule().getId()).isEqualTo("CASH_BASED");
+        assertions.assertThat(product.getAccountingRule().getId()).isEqualTo("ACC_DEF_REV_AM");
 
         final Map<String, ?> mappings = product.getAccountingMappings();
         final List<WCGLAccountMapping> expectedMappings = WCGLAccountMapping.all().stream()
@@ -905,11 +919,11 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         assertThat(product.getAccountingMappings()).isNullOrEmpty();
     }
 
-    @Then("Admin failed to create a Working Capital Loan Product with Cash based accounting and non-existent GL account ID with status {int}")
+    @Then("Admin failed to create a Working Capital Loan Product with Accrual with deferred revenue amortization accounting and non-existent GL account ID with status {int}")
     public void createWorkingCapitalLoanProductWithNonExistentGLAccountFailed(final int expectedStatus) {
-        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory
-                .defaultWorkingCapitalLoanProductRequestWithCashAccounting()//
+                .defaultWorkingCapitalLoanProductRequestWithAccrualAccounting()//
                 .name(name)//
                 .fundSourceAccountId(NON_EXISTENT_GL_ACCOUNT_ID);
 
@@ -917,23 +931,23 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         assertThat(exception.getStatus()).as(ErrorMessageHelper.incorrectExpectedValueInResponse()).isEqualTo(expectedStatus);
     }
 
-    @Then("Admin failed to update Working Capital Loan Product to Cash based without required GL accounts with status {int}")
-    public void updateWorkingCapitalLoanProductToCashBasedWithoutRequiredGLAccountsFailed(final int expectedStatus) {
+    @Then("Admin failed to update Working Capital Loan Product to Accrual with deferred revenue amortization without required GL accounts with status {int}")
+    public void updateWorkingCapitalLoanProductToAccrualWithoutRequiredGLAccountsFailed(final int expectedStatus) {
         final PostWorkingCapitalLoanProductsResponse createResponse = testContext()
                 .get(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_CREATE_RESPONSE);
         final Long resourceId = createResponse.getResourceId();
 
         final PutWorkingCapitalLoanProductsProductIdRequest updateRequest = new PutWorkingCapitalLoanProductsProductIdRequest()//
                 .locale("en")//
-                .accountingRule(PutWorkingCapitalLoanProductsProductIdRequest.AccountingRuleEnum.CASH_BASED);
+                .accountingRule(PutWorkingCapitalLoanProductsProductIdRequest.AccountingRuleEnum.ACC_DEF_REV_AM);
 
         final CallFailedRuntimeException exception = fail(
                 () -> workingCapitalApi().updateWorkingCapitalLoanProduct(resourceId, updateRequest, Map.of()));
         assertThat(exception.getStatus()).as(ErrorMessageHelper.incorrectExpectedValueInResponse()).isEqualTo(expectedStatus);
     }
 
-    @When("Admin updates writeOff GL account on Cash based Working Capital Loan Product")
-    public void updateWriteOffGLAccountOnCashBasedProduct() {
+    @When("Admin updates writeOff GL account on Accrual with deferred revenue amortization Working Capital Loan Product")
+    public void updateWriteOffGLAccountOnAccrualProduct() {
         final PostWorkingCapitalLoanProductsResponse createResponse = testContext()
                 .get(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_CREATE_RESPONSE);
         final PostWorkingCapitalLoanProductsRequest originalRequest = testContext()
@@ -943,7 +957,8 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         final Long newWriteOffAccountId = accountTypeResolver.resolve(DefaultAccountType.CREDIT_LOSS_BAD_DEBT);
 
         // Validator requires all mandatory GL accounts when accountingRule is present — re-send originals
-        final PutWorkingCapitalLoanProductsProductIdRequest updateRequest = buildCashBasedUpdateRequest(originalRequest)//
+        final PutWorkingCapitalLoanProductsProductIdRequest updateRequest = buildAccrualWithDeferredRevenueAmortizationUpdateRequest(
+                originalRequest)//
                 .writeOffAccountId(newWriteOffAccountId);
 
         ok(() -> workingCapitalApi().updateWorkingCapitalLoanProduct(resourceId, updateRequest, Map.of()));
@@ -987,11 +1002,11 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
 
     @Then("Admin failed to create a Working Capital Loan Product with wrong GL account type for loanPortfolio with status {int}")
     public void createWorkingCapitalLoanProductWithWrongGLAccountTypeFailed(final int expectedStatus) {
-        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final Long incomeAccountId = accountTypeResolver.resolve(DefaultAccountType.INTEREST_INCOME);
 
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory
-                .defaultWorkingCapitalLoanProductRequestWithCashAccounting()//
+                .defaultWorkingCapitalLoanProductRequestWithAccrualAccounting()//
                 .name(name)//
                 .loanPortfolioAccountId(incomeAccountId);
 
@@ -999,7 +1014,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         assertThat(exception.getStatus()).as(ErrorMessageHelper.incorrectExpectedValueInResponse()).isEqualTo(expectedStatus);
     }
 
-    @Then("Admin verifies Working Capital Loan Product template has NONE and CASH_BASED accounting rule options")
+    @Then("Admin verifies Working Capital Loan Product template has NONE and ACC_DEF_REV_AM accounting rule options")
     public void verifyWorkingCapitalLoanProductTemplateAccountingRuleOptions() {
         final GetWorkingCapitalLoanProductsTemplateResponse template = workingCapitalApi()
                 .retrieveTemplateWorkingCapitalLoanProduct(Map.of());
@@ -1010,7 +1025,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         final List<String> ruleIds = template.getAccountingRuleOptions().stream()//
                 .map(StringEnumOptionData::getId)//
                 .toList();
-        assertThat(ruleIds).contains("NONE", "CASH_BASED");
+        assertThat(ruleIds).contains("NONE", "ACC_DEF_REV_AM");
 
         assertThat(template.getAccountingMappingOptions()).isNotNull();
         assertThat(template.getAccountingMappingOptions()).isNotEmpty();
@@ -1053,13 +1068,6 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     private Long getWorkingCapitalLoanResourceId() {
         PostWorkingCapitalLoansResponse response = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         return response.getResourceId();
-    }
-
-    @When("Admin makes Internal Payment {string} on {string}")
-    public void internalPayWCLoan(String amount, String transactionDate) {
-        Long resourceId = getWorkingCapitalLoanResourceId();
-        fineractFeignClient.workingCapitalLoans().payment(resourceId, new InternalWorkingCapitalLoanPaymentRequest()
-                .amount(BigDecimal.valueOf(Double.parseDouble(amount))).transactionDate(LocalDate.parse(transactionDate)));
     }
 
     @Then("Delinquency Tag History for Working Capital loan has lines:")
@@ -1112,10 +1120,11 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         }
     }
 
-    private PutWorkingCapitalLoanProductsProductIdRequest buildCashBasedUpdateRequest(final PostWorkingCapitalLoanProductsRequest source) {
+    private PutWorkingCapitalLoanProductsProductIdRequest buildAccrualWithDeferredRevenueAmortizationUpdateRequest(
+            final PostWorkingCapitalLoanProductsRequest source) {
         return new PutWorkingCapitalLoanProductsProductIdRequest()//
                 .locale("en")//
-                .accountingRule(PutWorkingCapitalLoanProductsProductIdRequest.AccountingRuleEnum.CASH_BASED)//
+                .accountingRule(PutWorkingCapitalLoanProductsProductIdRequest.AccountingRuleEnum.ACC_DEF_REV_AM)//
                 .fundSourceAccountId(source.getFundSourceAccountId())//
                 .loanPortfolioAccountId(source.getLoanPortfolioAccountId())//
                 .transfersInSuspenseAccountId(source.getTransfersInSuspenseAccountId())//
@@ -1278,7 +1287,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
 
     public void updateWorkingCapitalLoanProductWithBreachAndNearBreach(Long breachId, Long nearBreachId) {
         final String workingCapitalProductDefaultName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
-                + Utils.randomStringGenerator("_", 10);
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final String workingCapitalProductDefaultShortName = Utils.randomStringGenerator(4);
         final PutWorkingCapitalLoanProductsProductIdRequest workingCapitalLoanProductUpdateRequest = workingCapitalRequestFactory
                 .defaultWorkingCapitalLoanProductRequestUpdate() //
@@ -1445,7 +1454,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
 
     public void createWorkingCapitalLoanProductWithInvalidDataFailure(String fieldName, String value, String errorMessage) {
         final String workingCapitalProductDefaultName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
-                + Utils.randomStringGenerator("_", 10);
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest defaultWorkingCapitalLoanProductCreateRequest = workingCapitalRequestFactory
                 .defaultWorkingCapitalLoanProductRequest() //
                 .name(workingCapitalProductDefaultName); //
@@ -1460,7 +1469,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         final Long breachId = getWcBreachIdForFrequency(3, WorkingCapitalBreachFrequencyType.MONTHS.getCode());
 
         final String workingCapitalProductDefaultName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
-                + Utils.randomStringGenerator("_", 10);
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest defaultWorkingCapitalLoanProductCreateRequest = workingCapitalRequestFactory
                 .defaultWorkingCapitalLoanProductRequest() //
                 .breachId(breachId).name(workingCapitalProductDefaultName); //
@@ -1738,7 +1747,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
 
     @When("Admin creates a new Working Capital Loan Product with delinquencyGraceDays {int} and delinquencyStartType {string}")
     public void createWorkingCapitalLoanProductWithGraceDays(int graceDays, String startType) {
-        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory.defaultWorkingCapitalLoanProductRequest() //
                 .name(name) //
                 .delinquencyGraceDays(graceDays) //
@@ -1796,11 +1805,12 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         testContext().set(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_TEMPLATE_RESPONSE, template);
     }
 
-    @When("Admin creates a new Working Capital Loan Product with Cash based accounting and advanced mappings")
+    @When("Admin creates a new Working Capital Loan Product with Accrual with deferred revenue amortization accounting and advanced mappings")
     public void createWorkingCapitalLoanProductWithAdvancedMappings() {
-        final String productName = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String productName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory
-                .defaultWorkingCapitalLoanProductRequestWithCashAccounting().name(productName);
+                .defaultWorkingCapitalLoanProductRequestWithAccrualAccounting().name(productName);
 
         final AdvancedAccountingExpectation expected = WorkingCapitalLoanProductAdvancedAccountingTestHelper
                 .prepareAdvancedMappings(request, paymentTypeResolver, fineractFeignClient);
@@ -1816,9 +1826,10 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         final PostWorkingCapitalLoanProductsResponse createResponse = testContext()
                 .get(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_CREATE_RESPONSE);
         final Long resourceId = createResponse.getResourceId();
-        final PostWorkingCapitalLoanProductsRequest cashRequest = workingCapitalRequestFactory
-                .defaultWorkingCapitalLoanProductRequestWithCashAccounting();
-        final PutWorkingCapitalLoanProductsProductIdRequest updateRequest = buildCashBasedUpdateRequest(cashRequest);
+        final PostWorkingCapitalLoanProductsRequest accrualRequest = workingCapitalRequestFactory
+                .defaultWorkingCapitalLoanProductRequestWithAccrualAccounting();
+        final PutWorkingCapitalLoanProductsProductIdRequest updateRequest = buildAccrualWithDeferredRevenueAmortizationUpdateRequest(
+                accrualRequest);
         final AdvancedAccountingExpectation expected = WorkingCapitalLoanProductAdvancedAccountingTestHelper
                 .prepareAdvancedMappings(updateRequest, paymentTypeResolver, fineractFeignClient);
         testContext().set(WC_ADVANCED_MAPPINGS_EXPECTED_UPDATE, expected);
@@ -1886,7 +1897,8 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     @When("Admin creates a new Working Capital Loan Product with payment allocation order:")
     public void createWorkingCapitalLoanProductWithPaymentAllocationOrder(final DataTable table) {
         final List<String> rules = table.asList();
-        final String productName = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String productName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         // Allow attribute overrides so loans created from this product can supply their own discount (the loan
         // creation step always sends a discount value).
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory
@@ -1943,7 +1955,8 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
 
     @Then("Admin failed to create a new Working Capital Loan Product with duplicate payment allocation rules")
     public void createWorkingCapitalLoanProductWithDuplicatePaymentAllocationRulesFailed() {
-        final String productName = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String productName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final List<String> duplicateRules = List.of(//
                 WorkingCapitalRequestFactory.DUE_PENALTY, WorkingCapitalRequestFactory.DUE_PENALTY, WorkingCapitalRequestFactory.DUE_FEE,
                 WorkingCapitalRequestFactory.DUE_PRINCIPAL, WorkingCapitalRequestFactory.IN_ADVANCE_FEE,
@@ -1980,9 +1993,10 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     }
 
     private PutWorkingCapitalLoanProductsProductIdRequest buildAdvancedMappingsUpdateRequest() {
-        final PostWorkingCapitalLoanProductsRequest cashRequest = workingCapitalRequestFactory
-                .defaultWorkingCapitalLoanProductRequestWithCashAccounting();
-        final PutWorkingCapitalLoanProductsProductIdRequest updateRequest = buildCashBasedUpdateRequest(cashRequest);
+        final PostWorkingCapitalLoanProductsRequest accrualRequest = workingCapitalRequestFactory
+                .defaultWorkingCapitalLoanProductRequestWithAccrualAccounting();
+        final PutWorkingCapitalLoanProductsProductIdRequest updateRequest = buildAccrualWithDeferredRevenueAmortizationUpdateRequest(
+                accrualRequest);
         final AdvancedAccountingExpectation expected = WorkingCapitalLoanProductAdvancedAccountingTestHelper
                 .prepareAdvancedMappings(updateRequest, paymentTypeResolver, fineractFeignClient);
         testContext().set(WC_ADVANCED_MAPPINGS_EXPECTED_UPDATE, expected);
@@ -2103,9 +2117,10 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
             List<WorkingCapitalLoanPaymentChannelToFundSourceMappings> paymentChannelMappings,
             List<WorkingCapitalPostChargeOffReasonToExpenseAccountMappings> chargeOffMappings,
             List<WorkingCapitalPostWriteOffReasonToExpenseAccountMappings> writeOffMappings) {
-        final String productName = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", 10);
+        final String productName = DefaultWorkingCapitalLoanProduct.WCLP.getName()
+                + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         return workingCapitalRequestFactory.defaultWorkingCapitalLoanProductAllowAttributesOverrideRequest().name(productName)
-                .accountingRule(AccountingRuleEnum.CASH_BASED)
+                .accountingRule(AccountingRuleEnum.ACC_DEF_REV_AM)
                 .fundSourceAccountId(accountTypeResolver.resolve(DefaultAccountType.FUND_RECEIVABLES))
                 .loanPortfolioAccountId(accountTypeResolver.resolve(DefaultAccountType.LOANS_RECEIVABLE))
                 .transfersInSuspenseAccountId(accountTypeResolver.resolve(DefaultAccountType.TRANSFER_IN_SUSPENSE_ACCOUNT))

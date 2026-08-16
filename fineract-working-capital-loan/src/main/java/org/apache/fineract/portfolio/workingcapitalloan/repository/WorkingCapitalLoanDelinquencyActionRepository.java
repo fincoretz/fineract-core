@@ -19,7 +19,6 @@
 package org.apache.fineract.portfolio.workingcapitalloan.repository;
 
 import java.util.List;
-import java.util.Optional;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyAction;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanDelinquencyAction;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,7 +29,7 @@ public interface WorkingCapitalLoanDelinquencyActionRepository extends JpaReposi
 
     List<WorkingCapitalLoanDelinquencyAction> findByWorkingCapitalLoanIdOrderById(Long workingCapitalLoanId);
 
-    Optional<WorkingCapitalLoanDelinquencyAction> findTopByWorkingCapitalLoanIdAndActionOrderByIdDesc(Long workingCapitalLoanId,
+    List<WorkingCapitalLoanDelinquencyAction> findByWorkingCapitalLoanIdAndActionOrderByIdDesc(Long workingCapitalLoanId,
             DelinquencyAction action);
 
 }

@@ -1,0 +1,166 @@
+# Production/UAT stack for Portainer — the split-instance core + Traefik edge.
+# Deploy: Portainer → Stacks → Add Stack → paste this file (Swarm mode).
+#
+# This stack owns: Traefik (edge, replaces Caddy), PgBouncer, kafka-ui, and the
+# four Fineract roles. The stateful services (Postgres `fineract_db`, Kafka,
+# registry, Portainer) and the tenant-portal UIs remain their OWN stacks — this
+# file routes to them by service name via Traefik's file provider, so they must
+# all be attached to the shared external `fineract-net`.
+#
+# Prerequisites:
+#   - `fineract_db` (Postgres 17) already running on fineract-net, with the
+#     fineract_tenants + fineract_default DBs and pgbouncer_auth role (§10.1).
+#   - Kafka, Portainer, and the 5 UI stacks (fineract-neo-ui, imarisha-ui,
+#     sandbox-ui, bongobing-ui, admin-ui) running on fineract-net.
+#   - Images built & pushed to the registry; set FINERACT_IMAGE to a pinned tag
+#     (<version>-<gitsha>, not :latest).
+#   - Repo config present on the node (bind mounts) and
+#     config/docker/traefik/secrets/admin.htpasswd created (htpasswd -B).
+#   - Stack env in Portainer supplies: PROVISIONER_DB_PASSWORD,
+#     PGBOUNCER_AUTH_PASSWORD (and any rotated DB/master passwords).
+#
+# NOTE: `deploy.replicas` below only takes effect if this Portainer instance
+# runs stacks in Swarm mode. If you're deploying as a plain Docker Compose
+# stack (no Swarm), replicas are ignored and only 1 container per service
+# starts — duplicate the service block manually (e.g. fineract-read-2) for
+# extra replicas, or enable Swarm mode in Portainer.
+
+x-fineract-common: &fineract-common
+  image: ${FINERACT_IMAGE:-75.119.154.177:5000/fineract:b6625dd37}   # pinned build (fineract-core@b6625dd37); override via stack env
+  restart: unless-stopped
+  networks:
+    - fineract-net
+  depends_on:
+    pgbouncer:
+      condition: service_healthy
+  env_file:
+    - ./config/docker/env/fineract-production.env
+  healthcheck:
+    # The jib-built fineract image ships wget/nc but not curl — a curl-based
+    # probe reports every instance unhealthy (and dependents refuse to start).
+    test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/fineract-provider/actuator/health/liveness"]
+    interval: 30s
+    timeout: 10s
+    retries: 5
+    start_period: 60s
+
+services:
+
+  # ── PgBouncer ──────────────────────────────────────────────────────────────
+  pgbouncer:
+    # uat-20260809 = built on the box, includes the COPY --chown=70:70 fix and the
+    # UAT userlist.txt. Do NOT use pgbouncer:b6625dd37 — that is the pre-fix image
+    # (root-owned auth file + dev credentials) and every connection fails auth.
+    image: 75.119.154.177:5000/pgbouncer:uat-20260809
+    restart: unless-stopped
+    networks:
+      - fineract-net
+    ports:
+      - "5433:5432"         # expose on 5433 externally so it doesn't conflict with fineract_db
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "5432", "-U", "pgbouncer_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Traefik edge (replaces Caddy) ────────────────────────────────────────────
+  # Routing lives in config/docker/traefik/dynamic-prod/routes.yml (file provider);
+  # static config (entrypoints, LE HTTP-01) in traefik.prod.yml. No docker.sock
+  # mount — the file provider needs no access to the Docker API.
+  # PREREQ: the repo's config/docker/traefik/ must be present on the node (bind
+  # mounts), and config/docker/traefik/secrets/admin.htpasswd must exist
+  # (htpasswd -B, NOT committed — see .gitignore). Every routed service (portals,
+  # kafka-ui, portainer) must be attached to fineract-net so the file-provider
+  # URLs resolve.
+  traefik:
+    image: traefik:v3.2
+    restart: unless-stopped
+    networks:
+      fineract-net:
+        aliases:
+          - api            # portal SSR reaches the read/write split at http://api:8000
+    ports:
+      - "80:80"
+      - "443:443"
+      # :8000 (internal entrypoint) is deliberately NOT published — private only.
+    volumes:
+      - ./config/docker/traefik/traefik.prod.yml:/etc/traefik/traefik.yml:ro
+      - ./config/docker/traefik/dynamic-prod:/etc/traefik/dynamic:ro
+      - ./config/docker/traefik/secrets/admin.htpasswd:/etc/traefik/secrets/admin.htpasswd:ro
+      - traefik_letsencrypt:/letsencrypt
+    deploy:
+      replicas: 1
+
+  # ── kafka-ui (reached only via Traefik → admin-auth; not published to host) ──
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest    # pin a digest/tag before prod
+    restart: unless-stopped
+    networks:
+      - fineract-net
+    environment:
+      KAFKA_CLUSTERS_0_NAME: fineract-uat
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "true"
+      AUTH_TYPE: DISABLED       # exposure control is Traefik's admin-auth + TLS
+    deploy:
+      replicas: 1
+
+  # ── Read instance ──────────────────────────────────────────────────────────
+  fineract-read:
+    <<: *fineract-common
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-read.env
+    ports:
+      - "8081:8080"
+    deploy:
+      replicas: 2        # scale read nodes horizontally
+
+  # ── Write instance ─────────────────────────────────────────────────────────
+  fineract-write:
+    <<: *fineract-common
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-write.env
+    # Tenant-provisioning API (§5) — WRITE instance only. Secrets come from the
+    # Portainer stack environment, never committed. The superuser connects
+    # DIRECTLY to Postgres (not PgBouncer) to CREATE DATABASE; on this box the
+    # Postgres service alias is `fineract_db`.
+    environment:
+      FINERACT_PLATFORM_ADMIN_TENANT_ID: platform
+      FINERACT_TENANT_PROVISIONING_SUPERUSER_USERNAME: ${PROVISIONER_DB_USER:-fineract_provisioner}
+      FINERACT_TENANT_PROVISIONING_SUPERUSER_PASSWORD: ${PROVISIONER_DB_PASSWORD:?set in Portainer stack env}
+      FINERACT_TENANT_PROVISIONING_SUPERUSER_JDBC_URL: jdbc:postgresql://fineract_db:5432/postgres
+      FINERACT_TENANT_PROVISIONING_PGBOUNCER_AUTH_PASSWORD: ${PGBOUNCER_AUTH_PASSWORD:?set in Portainer stack env}
+      FINERACT_TENANT_PROVISIONING_SELF_API_BASE_URL: http://fineract-write:8080/fineract-provider
+    ports:
+      - "8082:8080"
+    deploy:
+      replicas: 1
+
+  # ── Batch Manager (only ever 1) ────────────────────────────────────────────
+  fineract-batch-manager:
+    <<: *fineract-common
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-batch-manager.env
+    ports:
+      - "8083:8080"
+    deploy:
+      replicas: 1        # NEVER scale this beyond 1
+
+  # ── Batch Worker ───────────────────────────────────────────────────────────
+  fineract-batch-worker:
+    <<: *fineract-common
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-batch-worker.env
+    deploy:
+      replicas: 2        # scale freely
+
+volumes:
+  traefik_letsencrypt:   # persists LE certs/acme.json across Traefik restarts
+
+networks:
+  fineract-net:
+    external: true       # attach to your existing network

@@ -1172,11 +1172,11 @@
             <column name="is_deleted" valueBoolean="false"/>
             <column name="office_id" valueNumeric="1"/>
             <column name="staff_id"/>
-            <column name="username" value="mifos"/>
+            <column name="username" value="imara.admin"/>
             <column name="firstname" value="App"/>
             <column name="lastname" value="Administrator"/>
             <column name="password"
-                    value="{SHA-256}{1}5787039480429368bf94732aacc771cd0a3ea02bcf504ffe1185ab94213bc63a"/>
+                    value="{SHA-256}{1}ad546c452cd8e12ae1a95b8836417b557f09f7a317648703a4570b2185e0b627"/>
             <column name="email" value="demomfi@mifos.org"/>
             <column name="firsttime_login_remaining" valueBoolean="false"/>
             <column name="nonexpired" valueBoolean="true"/>
@@ -1197,7 +1197,7 @@
             <column name="firstname" value="system"/>
             <column name="lastname" value="system"/>
             <column name="password"
-                    value="{SHA-256}{2}5787039480429368bf94732aacc771cd0a3ea02bcf504ffe1185ab94213bc63a"/>
+                    value="{SHA-256}{2}882fb30b93435cfa8b419bd066839b22784a076d9f929770dfe8c935365e7c79"/>
             <column name="email" value="demomfi@mifos.org"/>
             <column name="firsttime_login_remaining" valueBoolean="false"/>
             <column name="nonexpired" valueBoolean="true"/>
@@ -1218,7 +1218,7 @@
             <column name="firstname" value="Interop"/>
             <column name="lastname" value="User"/>
             <column name="password"
-                    value="{SHA-256}{3}5787039480429368bf94732aacc771cd0a3ea02bcf504ffe1185ab94213bc63a"/>
+                    value="{SHA-256}{3}4133396b438937271395f08e96a2a0025167dba5730357d4816203c61d17cfd4"/>
             <column name="email" value="email@email.com"/>
             <column name="firsttime_login_remaining" valueBoolean="false"/>
             <column name="nonexpired" valueBoolean="true"/>

@@ -1,0 +1,216 @@
+# Self-contained LOCAL dev stack for the split-instance topology.
+# Brings up the whole rig in one command: Postgres + PgBouncer, Kafka (+ UI),
+# the four Fineract roles (read / write / batch-manager / batch-worker), the
+# fineract-neo-ui portal, and Traefik doing the §4 read/write edge split.
+#
+# NOT for production — that's docker-compose-production.yml (registry images,
+# Portainer, real domains/TLS). This file uses locally-built images, *.localhost
+# hosts and plain HTTP, and is the reproducible form of the manually-assembled
+# rig that was validated end-to-end.
+#
+# Prerequisites (build these images first, same as any local run):
+#   - fineract:latest         ./gradlew :fineract-provider:jibDockerBuild -Djib.to.image=fineract
+#   - fineract-pgbouncer:local  docker build -t fineract-pgbouncer:local config/docker/pgbouncer
+#   - fineract-neo-ui:latest    (in the fineract-neo-ui repo) docker build -t fineract-neo-ui:latest .
+#
+# Bring up:   docker compose -f docker-compose-splitstack.yml up -d
+# Reach it:   http://api.localhost  http://portal.localhost  http://traefik.localhost (admin/admin)
+#
+# Post-up (optional, per DEPLOYMENT_REQUIREMENTS.md §10 — the `default` tenant
+# auto-bootstraps, but these are runtime steps a fresh DB won't have):
+#   - the seeded imara.admin password hash's plaintext is unknown, so to log in
+#     via the API reset it, e.g.:
+#       docker exec -e PGPASSWORD=password fineract-db psql -h fineract_db -U fineract \
+#         -d fineract_default -c "UPDATE m_appuser SET password='{bcrypt}<hash>' WHERE username='imara.admin';"
+#   - provision the platform tenant: scripts/provision-tenant.sh
+#   - enable external event types: PUT /v1/externalevents/configuration
+
+x-fineract-role: &fineract-role
+  image: fineract:latest
+  restart: unless-stopped
+  networks: [fineract-net]
+  # On a memory-constrained machine, override the 2g heap from
+  # fineract-production.env here, e.g.  environment: { JAVA_OPTS: "-Xms256m -Xmx768m -XX:+UseG1GC" }
+  env_file:
+    - ./config/docker/env/fineract-production.env
+  # The jib-built fineract image ships wget/nc but NOT curl, so the health
+  # probe uses wget (docker-compose-production.yml's curl-based check would
+  # report every instance unhealthy against this image — worth fixing there
+  # too if that stack is ever run on a locally-built image).
+  healthcheck:
+    test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/fineract-provider/actuator/health/liveness"]
+    interval: 15s
+    timeout: 10s
+    retries: 12
+    start_period: 180s
+
+services:
+  # ── Postgres (aliased fineract_db — PgBouncer's baked-in config targets it) ──
+  db:
+    image: postgres:18.3
+    container_name: fineract-db
+    restart: unless-stopped
+    # Laptop-scaled tuning. max_connections=200 matches DEPLOYMENT_REQUIREMENTS.md
+    # §6 and MUST stay above PgBouncer's max_db_connections=180 for that cap to be
+    # valid; the memory settings are small dev values. Production uses the full
+    # 32 GB-node values in config/docker/postgresql/postgresql-production.conf,
+    # applied to the externally provisioned Postgres (§3/§6).
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=768MB"
+      - "-c"
+      - "work_mem=16MB"
+      - "-c"
+      - "maintenance_work_mem=128MB"
+      - "-c"
+      - "wal_level=replica"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pgSuperLocal123
+      POSTGRES_DB: postgres
+      FINERACT_DB_USER: fineract
+      FINERACT_DB_PASSWORD: password
+      PGBOUNCER_AUTH_PASSWORD: "KsZt1PhATzftm7aiW2k30mnm!Xz9"
+    volumes:
+      - ./config/docker/postgresql/splitstack-initdb.d:/docker-entrypoint-initdb.d:ro
+    networks:
+      fineract-net:
+        aliases: [fineract_db]
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── PgBouncer (transaction pooling; auth_query via pgbouncer_auth) ───────────
+  pgbouncer:
+    image: fineract-pgbouncer:local
+    container_name: fineract-pgbouncer
+    restart: unless-stopped
+    networks: [fineract-net]
+    ports: ["5433:5432"]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "5432", "-U", "pgbouncer_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── Kafka (single-node KRaft) + UI ──────────────────────────────────────────
+  kafka:
+    image: apache/kafka:4.2.0-rc2
+    container_name: fineract-kafka
+    restart: unless-stopped
+    networks: [fineract-net]
+    ports: ["9092:9092"]
+    environment:
+      KAFKA_NODE_ID: 0
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: fineract-kafka-ui
+    restart: unless-stopped
+    networks: [fineract-net]
+    ports: ["8090:8080"]
+    environment:
+      KAFKA_CLUSTERS_0_NAME: fineract-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "true"
+    depends_on: [kafka]
+
+  # ── Fineract: write first (runs migrations), then read/batch depend on it ────
+  fineract-write:
+    <<: *fineract-role
+    container_name: fineract-write
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-write.env
+    ports: ["8082:8080"]
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
+  fineract-read:
+    <<: *fineract-role
+    container_name: fineract-read
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-read.env
+    ports: ["8081:8080"]
+    depends_on:
+      fineract-write:
+        condition: service_healthy
+
+  fineract-batch-manager:
+    <<: *fineract-role
+    container_name: fineract-batch-manager
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-batch-manager.env
+    ports: ["8083:8080"]
+    depends_on:
+      fineract-write:
+        condition: service_healthy
+
+  fineract-batch-worker:
+    <<: *fineract-role
+    container_name: fineract-batch-worker
+    env_file:
+      - ./config/docker/env/fineract-production.env
+      - ./config/docker/env/fineract-batch-worker.env
+    depends_on:
+      fineract-write:
+        condition: service_healthy
+
+  # ── Portal (fineract-neo-ui) ─────────────────────────────────────────────────
+  portal:
+    image: fineract-neo-ui:latest
+    container_name: fineract-neo-ui
+    restart: unless-stopped
+    networks: [fineract-net]
+    environment:
+      TENANT_ID: default
+      APP_NAME: Imara
+      # Browser-facing (baked into client bundle) vs server-only SSR target.
+      # API_URL points at Traefik's internal `api` alias so SSR calls get the
+      # read/write split without a public hop (DEPLOYMENT_REQUIREMENTS.md §9).
+      NEXT_PUBLIC_API_URL: http://api.localhost
+      API_URL: http://api
+    depends_on: [traefik]
+
+  # ── Traefik edge (read/write split, portal host, auth'd dashboard) ───────────
+  traefik:
+    image: traefik:v3.2
+    container_name: fineract-traefik
+    restart: unless-stopped
+    ports: ["80:80"]
+    networks:
+      fineract-net:
+        aliases: [api]   # internal alias the portal's API_URL targets
+    volumes:
+      - ./config/docker/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./config/docker/traefik/dynamic:/etc/traefik/dynamic:ro
+
+networks:
+  fineract-net:
+    name: fineract-net

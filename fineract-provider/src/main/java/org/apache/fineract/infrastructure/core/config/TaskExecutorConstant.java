@@ -29,4 +29,5 @@ public final class TaskExecutorConstant {
     public static final String EVENT_TASK_EXECUTOR_BEAN_NAME = "externalEventJmsProducerExecutor";
     public static final String LOAN_COB_CATCH_UP_TASK_EXECUTOR_BEAN_NAME = "loanCOBCatchUpThreadPoolTaskExecutor";
     public static final String WORKING_CAPITAL_LOAN_COB_CATCH_UP_TASK_EXECUTOR_BEAN_NAME = "workingCapitalLoanCOBCatchUpThreadPoolTaskExecutor";
+    public static final String TENANT_PROVISIONING_TASK_EXECUTOR_BEAN_NAME = "tenantProvisioningExecutor";
 }

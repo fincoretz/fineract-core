@@ -1,3 +1,9 @@
+# Contains real PgBouncer auth credentials generated locally; see userlist.txt.example
+config/docker/pgbouncer/userlist.txt
+
+# Traefik admin basic-auth htpasswd (real credentials) — created on the node, never committed
+config/docker/traefik/secrets/
+
 *.class
 *.jar
 *.war
@@ -35,3 +41,4 @@ gradleExp/
 .java-version
 
 .windsurf/
+docs/

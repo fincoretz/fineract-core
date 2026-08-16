@@ -95,6 +95,10 @@ public class FineractProperties {
 
     private FineractDefaultValues defaults;
 
+    private FineractPlatformProperties platform;
+
+    private FineractTenantProvisioningProperties tenantProvisioning;
+
     @Getter
     @Setter
     public static class FineractTenantProperties {
@@ -792,5 +796,37 @@ public class FineractProperties {
     public static class FineractDefaultValues {
 
         private Long officeId;
+    }
+
+    /**
+     * Configuration for the dedicated "platform" tenant that holds platform-admin users used to onboard new
+     * Fineract tenants (multi-tenant SaaS onboarding).
+     */
+    @Getter
+    @Setter
+    public static class FineractPlatformProperties {
+
+        private String adminTenantId;
+    }
+
+    /**
+     * Configuration for asynchronous, API-driven tenant provisioning (creating new Fineract tenants on demand).
+     */
+    @Getter
+    @Setter
+    public static class FineractTenantProvisioningProperties {
+
+        // Credentials for a Postgres role with CREATEDB privilege, distinct from the app's normal
+        // tenant-store user, used only for the "CREATE DATABASE" step (which cannot run in a transaction).
+        private String superuserUsername;
+        private String superuserPassword;
+        private String superuserJdbcUrl;
+
+        // Password used when creating the pgbouncer_auth role/function in newly provisioned tenant databases.
+        private String pgbouncerAuthPassword;
+
+        private int threadPoolCorePoolSize;
+        private int threadPoolMaxPoolSize;
+        private int threadPoolQueueCapacity;
     }
 }

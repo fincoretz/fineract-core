@@ -1,0 +1,98 @@
+# Traefik dynamic routing for the split-instance stack.
+# Hot-reloaded by the file provider. See DEPLOYMENT_REQUIREMENTS.md §4/§9.
+#
+# Hosts below use *.localhost (the locally-validated form). For staging, swap
+# to your real domain (api.example.com / portal per tenant / traefik dashboard)
+# and add `tls: { certResolver: le }` + the `websecure` entrypoint per public
+# router — see traefik.yml. The routing LOGIC (method split, portal, dashboard
+# auth, batch excluded) is unchanged between local and staging.
+
+http:
+  routers:
+    # GET/HEAD -> read instance(s). Higher priority so this wins over the
+    # write catch-all below when both would otherwise match. `api.localhost`
+    # is the public/browser-facing host; `api` is the container-network alias
+    # the portal's server-side proxy (API_URL) connects to directly — same
+    # routing, reached differently.
+    fineract-read:
+      rule: "(Host(`api.localhost`) || Host(`api`)) && (Method(`GET`) || Method(`HEAD`))"
+      service: fineract-read
+      priority: 100
+      entryPoints:
+        - web
+
+    # Scheduler / jobs API -> batch-manager, for BOTH reads and writes. These
+    # endpoints (/jobs, /scheduler) are served ONLY by the instance that owns the
+    # scheduler; read and write instances reject every method with
+    #   405 "Invalid method X used with request to this instance type".
+    # Higher priority than the method split so it wins for these paths regardless
+    # of GET/PUT/POST. Without this the portal's job list is always empty.
+    fineract-scheduler:
+      rule: "(Host(`api.localhost`) || Host(`api`)) && (PathPrefix(`/fineract-provider/api/v1/jobs`) || PathPrefix(`/fineract-provider/api/v1/scheduler`))"
+      service: fineract-manager
+      priority: 200
+      entryPoints:
+        - web
+
+    # Everything else (POST/PUT/DELETE/PATCH) -> write. Deliberately no method
+    # restriction: this is the catch-all, lower priority than the read router.
+    fineract-write:
+      rule: "Host(`api.localhost`) || Host(`api`)"
+      service: fineract-write
+      priority: 1
+      entryPoints:
+        - web
+
+    # Portal (fineract-neo-ui). One router per tenant host in staging
+    # ({tenant}.example.com -> that tenant's portal container, §9); a single
+    # host here for the local trial.
+    portal:
+      rule: "Host(`portal.localhost`)"
+      service: portal
+      entryPoints:
+        - web
+
+    # Traefik dashboard — own host, behind basic-auth. STAGING: add TLS and
+    # restrict to a trusted/admin network; basic-auth over plain HTTP is a
+    # local stand-in, not sufficient exposure control for a public dashboard.
+    dashboard:
+      rule: "Host(`traefik.localhost`)"
+      service: api@internal
+      middlewares:
+        - dashboard-auth
+      entryPoints:
+        - web
+
+  middlewares:
+    dashboard-auth:
+      basicAuth:
+        # Local throwaway credential (admin / admin) — REPLACE before staging,
+        # ideally sourced from a secret. bcrypt htpasswd line; a single `$` is
+        # correct in a file provider (only docker labels / compose need `$$`).
+        users:
+          - "admin:$2y$05$fuCbnMqWkvxV5PSWYvHE9ORuOXm8MdIXTE86MVXuIs0mbmPQ0kcCW"
+
+  services:
+    fineract-read:
+      loadBalancer:
+        servers:
+          - url: "http://fineract-read:8080"
+
+    fineract-write:
+      loadBalancer:
+        servers:
+          - url: "http://fineract-write:8080"
+
+    # batch-manager owns the scheduler; only it serves /jobs and /scheduler.
+    fineract-manager:
+      loadBalancer:
+        servers:
+          - url: "http://fineract-batch-manager:8080"
+
+    portal:
+      loadBalancer:
+        servers:
+          - url: "http://fineract-neo-ui:3000"
+
+  # batch-manager and batch-worker are deliberately absent — per §4 they are
+  # never exposed through the proxy (internal Kafka/job traffic only).

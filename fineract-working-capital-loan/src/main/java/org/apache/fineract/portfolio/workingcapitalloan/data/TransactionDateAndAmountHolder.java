@@ -16,12 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.workingcapitalloan.service;
+package org.apache.fineract.portfolio.workingcapitalloan.data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public interface InternalWorkingCapitalLoanPaymentService {
-
-    void makePayment(Long loanId, BigDecimal amount, LocalDate transactionDate);
+public record TransactionDateAndAmountHolder(LocalDate transactionDate, BigDecimal transactionAmount) {
 }
