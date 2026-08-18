@@ -47,6 +47,45 @@ PRIVATE FORKS
 If you’re running Apache Fineract on a private fork, you might want to consider **disabling GitHub Actions CI**. 
 This is because the usage minutes and artifact costs (including the built workspace and logs generated during execution) could incur additional expenses, that you should be aware!
 
+LOCAL DEVELOPMENT (IMARA SPLIT-STACK)
+============
+
+This fork's multi-tenant, split-instance topology (read / write / batch-manager / batch-worker
+behind Traefik) has its own local dev stack, separate from the single-instance
+[`docker-compose-development.yml`](docker-compose-development.yml) covered below. Use this one if
+you're working on tenant provisioning, the read/write split, or anything Imara-specific; use the
+plain compose file if you just need a vanilla single-instance Fineract.
+
+**1. Build the three prerequisite images** (each from its own repo):
+```bash
+# this repo
+./gradlew :fineract-provider:jibDockerBuild -Djib.to.image=fineract
+docker build -t fineract-pgbouncer:local config/docker/pgbouncer
+
+# fineract-neo-ui repo (the tenant-facing portal)
+docker build -t fineract-neo-ui:latest .
+```
+The admin portal (`fineract-neo-admin` repo) isn't containerized — run it separately per that
+repo's own README (`npm run dev`, http://localhost:3100).
+
+**2. Bring up the stack:**
+```bash
+docker compose -f docker-compose-splitstack.yml up -d
+```
+Reach it at http://api.localhost (Fineract), http://portal.localhost (tenant portal), and
+http://traefik.localhost (dashboard, `admin`/`admin`).
+
+**3. Log in.** The seeded `default`-tenant admin (`imara.admin`) has a password hash whose
+plaintext nobody knows, so a fresh stack can't log in until it's reset once:
+```bash
+./scripts/reset-local-admin-password.sh   # imara.admin / LocalTest@123 by default
+```
+
+See [`docker-compose-splitstack.yml`](docker-compose-splitstack.yml)'s own header comment for the
+full prerequisite/post-up details, and `DEPLOYMENT_REQUIREMENTS.md` §10 for how this maps to a
+real deployment (that document also covers provisioning further tenants, e.g.
+`scripts/provision-tenant.sh`).
+
 INSTRUCTIONS
 ============
 
