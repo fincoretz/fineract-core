@@ -9,20 +9,23 @@
 # rig that was validated end-to-end.
 #
 # Prerequisites (build these images first, same as any local run):
-#   - fineract:latest         ./gradlew :fineract-provider:jibDockerBuild -Djib.to.image=fineract
+#   - fineract:latest           ./gradlew :fineract-provider:jibDockerBuild -Djib.to.image=fineract
 #   - fineract-pgbouncer:local  docker build -t fineract-pgbouncer:local config/docker/pgbouncer
 #   - fineract-neo-ui:latest    (in the fineract-neo-ui repo) docker build -t fineract-neo-ui:latest .
+#   - the admin portal (fineract-neo-admin repo) isn't containerized here - run it
+#     separately per that repo's README (`npm run dev`, http://localhost:3100).
 #
 # Bring up:   docker compose -f docker-compose-splitstack.yml up -d
 # Reach it:   http://api.localhost  http://portal.localhost  http://traefik.localhost (admin/admin)
 #
-# Post-up (optional, per DEPLOYMENT_REQUIREMENTS.md §10 — the `default` tenant
-# auto-bootstraps, but these are runtime steps a fresh DB won't have):
-#   - the seeded imara.admin password hash's plaintext is unknown, so to log in
-#     via the API reset it, e.g.:
-#       docker exec -e PGPASSWORD=password fineract-db psql -h fineract_db -U fineract \
-#         -d fineract_default -c "UPDATE m_appuser SET password='{bcrypt}<hash>' WHERE username='imara.admin';"
-#   - provision the platform tenant: scripts/provision-tenant.sh
+# Post-up (the `default` tenant auto-bootstraps, but these are runtime steps a
+# fresh DB won't have — see also README.md's "Local development" section and
+# DEPLOYMENT_REQUIREMENTS.md §10 for the production equivalents):
+#   - the seeded imara.admin password hash's plaintext is unknown, so a fresh
+#     stack can't log in until it's reset once:
+#       ./scripts/reset-local-admin-password.sh
+#   - provision further tenants via the internal API once logged in, or bootstrap
+#     an additional platform tenant with: scripts/provision-tenant.sh
 #   - enable external event types: PUT /v1/externalevents/configuration
 
 x-fineract-role: &fineract-role
@@ -143,6 +146,8 @@ services:
     env_file:
       - ./config/docker/env/fineract-production.env
       - ./config/docker/env/fineract-write.env
+      # Local tenant-provisioning creds (write creates tenants). See the file's header.
+      - ./config/docker/env/fineract-provisioning.env
     ports: ["8082:8080"]
     depends_on:
       pgbouncer:
@@ -156,6 +161,8 @@ services:
     env_file:
       - ./config/docker/env/fineract-production.env
       - ./config/docker/env/fineract-read.env
+      # Local tenant-provisioning creds (read serves the onboarding GET). See the file's header.
+      - ./config/docker/env/fineract-provisioning.env
     ports: ["8081:8080"]
     depends_on:
       fineract-write:
