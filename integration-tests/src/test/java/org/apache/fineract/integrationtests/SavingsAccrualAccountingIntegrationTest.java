@@ -47,11 +47,13 @@ import org.apache.fineract.integrationtests.common.savings.SavingsProductHelper;
 import org.apache.fineract.integrationtests.common.savings.SavingsTestLifecycleExtension;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Order(2)
 @ExtendWith({ SavingsTestLifecycleExtension.class })
 public class SavingsAccrualAccountingIntegrationTest {
 
@@ -59,7 +61,6 @@ public class SavingsAccrualAccountingIntegrationTest {
     private ResponseSpecification responseSpec;
     private RequestSpecification requestSpec;
     private SavingsAccountHelper savingsAccountHelper;
-    private SchedulerJobHelper schedulerJobHelper;
     private JournalEntryHelper journalEntryHelper;
     private AccountHelper accountHelper;
 
@@ -70,7 +71,6 @@ public class SavingsAccrualAccountingIntegrationTest {
         this.requestSpec.header("Authorization", "Basic " + Utils.loginIntoServerAndGetBase64EncodedAuthenticationKey());
         this.responseSpec = new ResponseSpecBuilder().expectStatusCode(200).build();
         this.savingsAccountHelper = new SavingsAccountHelper(this.requestSpec, this.responseSpec);
-        this.schedulerJobHelper = new SchedulerJobHelper(this.requestSpec);
         this.journalEntryHelper = new JournalEntryHelper(this.requestSpec, this.responseSpec);
         this.accountHelper = new AccountHelper(this.requestSpec, this.responseSpec);
     }
@@ -114,7 +114,7 @@ public class SavingsAccrualAccountingIntegrationTest {
                     CommonConstants.RESPONSE_RESOURCE_ID);
 
             // --- ACT ---
-            schedulerJobHelper.executeAndAwaitJob("Add Accrual Transactions For Savings");
+            SchedulerJobHelper.executeAndAwaitJob("Add Accrual Transactions For Savings");
 
             // --- ASSERT ---
             List<HashMap> accrualTransactions = getAccrualTransactions(savingsAccountId);
@@ -198,7 +198,7 @@ public class SavingsAccrualAccountingIntegrationTest {
                     CommonConstants.RESPONSE_RESOURCE_ID);
 
             // --- ACT ---
-            schedulerJobHelper.executeAndAwaitJob("Add Accrual Transactions For Savings");
+            SchedulerJobHelper.executeAndAwaitJob("Add Accrual Transactions For Savings");
 
             // --- ASSERT ---
             List<HashMap> accrualTransactions = getAccrualTransactions(savingsAccountId);

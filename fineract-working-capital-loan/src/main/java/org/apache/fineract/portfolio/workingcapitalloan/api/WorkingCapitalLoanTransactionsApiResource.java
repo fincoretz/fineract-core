@@ -18,7 +18,10 @@
  */
 package org.apache.fineract.portfolio.workingcapitalloan.api;
 
+import static org.apache.fineract.portfolio.workingcapitalloan.WorkingCapitalLoanConstants.CREDIT_BALANCE_REFUND_COMMAND;
 import static org.apache.fineract.portfolio.workingcapitalloan.WorkingCapitalLoanConstants.GOODWILL_CREDIT_LOAN_COMMAND;
+import static org.apache.fineract.portfolio.workingcapitalloan.WorkingCapitalLoanConstants.PAYOUT_REFUND_COMMAND;
+import static org.apache.fineract.portfolio.workingcapitalloan.WorkingCapitalLoanConstants.REPAYMENT_LOAN_COMMAND;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -217,16 +220,26 @@ public class WorkingCapitalLoanTransactionsApiResource {
 
         final CommandWrapperBuilder builder = new CommandWrapperBuilder().withJson(apiRequestBodyAsJson);
         final CommandWrapper commandRequest;
-        if (CommandParameterUtil.is(commandParam, "repayment")) {
+        if (CommandParameterUtil.is(commandParam, REPAYMENT_LOAN_COMMAND)) {
             commandRequest = builder.repaymentWorkingCapitalLoanTransaction(resolvedLoanId).build();
-        } else if (CommandParameterUtil.is(commandParam, "creditBalanceRefund")) {
+        } else if (CommandParameterUtil.is(commandParam, CREDIT_BALANCE_REFUND_COMMAND)) {
             commandRequest = builder.creditBalanceRefundWorkingCapitalLoanTransaction(resolvedLoanId).build();
+        } else if (CommandParameterUtil.is(commandParam, PAYOUT_REFUND_COMMAND)) {
+            commandRequest = builder.payoutRefundWorkingCapitalLoanTransaction(resolvedLoanId).build();
         } else if (CommandParameterUtil.is(commandParam, GOODWILL_CREDIT_LOAN_COMMAND)) {
             commandRequest = builder.goodwillCreditWorkingCapitalLoanTransaction(resolvedLoanId).build();
         } else if (CommandParameterUtil.is(commandParam, WorkingCapitalLoanConstants.DISCOUNT_FEE_LOAN_COMMAND)) {
             commandRequest = builder.discountFeeWorkingCapitalLoanTransaction(resolvedLoanId).build();
         } else if (CommandParameterUtil.is(commandParam, WorkingCapitalLoanConstants.DISCOUNT_FEE_ADJUSTMENT_LOAN_COMMAND)) {
             commandRequest = builder.discountFeeAdjustmentWorkingCapitalLoanTransaction(resolvedLoanId).build();
+        } else if (CommandParameterUtil.is(commandParam, WorkingCapitalLoanConstants.CHARGE_OFF_LOAN_COMMAND)) {
+            commandRequest = builder.chargeOffWorkingCapitalLoanTransaction(resolvedLoanId).build();
+        } else if (CommandParameterUtil.is(commandParam, WorkingCapitalLoanConstants.UNDO_CHARGE_OFF_LOAN_COMMAND)) {
+            commandRequest = builder.undoChargeOffWorkingCapitalLoanTransaction(resolvedLoanId).build();
+        } else if (CommandParameterUtil.is(commandParam, WorkingCapitalLoanConstants.WRITE_OFF_LOAN_COMMAND)) {
+            commandRequest = builder.writeOffWorkingCapitalLoanTransaction(resolvedLoanId).build();
+        } else if (CommandParameterUtil.is(commandParam, WorkingCapitalLoanConstants.UNDO_WRITE_OFF_LOAN_COMMAND)) {
+            commandRequest = builder.undoWriteOffWorkingCapitalLoanTransaction(resolvedLoanId).build();
         } else {
             throw new UnrecognizedQueryParamException("command", commandParam);
         }

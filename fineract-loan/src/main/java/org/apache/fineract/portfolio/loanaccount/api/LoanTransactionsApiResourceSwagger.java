@@ -28,7 +28,7 @@ import org.springframework.data.domain.Page;
 /**
  * Created by Chirag Gupta on 12/30/17.
  */
-final class LoanTransactionsApiResourceSwagger {
+public final class LoanTransactionsApiResourceSwagger {
 
     private LoanTransactionsApiResourceSwagger() {}
 
@@ -126,6 +126,15 @@ final class LoanTransactionsApiResourceSwagger {
         public Double netDisbursalAmount;
 
         public List<GetCodeValuesDataResponse> classificationOptions;
+
+        @Schema(example = "2")
+        public Integer numberOfPastInstallments;
+        @Schema(example = "3")
+        public Integer numberOfFutureInstallments;
+        @Schema(example = "[2009, 8, 1]")
+        public LocalDate nextInstallmentDueDate;
+        @Schema(example = "[2009, 8, 1]")
+        public LocalDate calculatedStartDate;
     }
 
     public static final class GetLoanCurrency {

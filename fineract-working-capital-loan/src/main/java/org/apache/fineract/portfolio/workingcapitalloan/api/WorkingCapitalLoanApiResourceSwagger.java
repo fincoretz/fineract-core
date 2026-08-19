@@ -50,6 +50,7 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public Collection<WorkingCapitalLoanProductApiResourceSwagger.GetWorkingCapitalLoanProductsResponse.GetDelinquencyBucket> delinquencyBucketOptions;
         public List<StringEnumOptionData> periodFrequencyTypeOptions;
         public List<StringEnumOptionData> delinquencyStartTypeOptions;
+        public List<StringEnumOptionData> breachStartTypeOptions;
         public List<StringEnumOptionData> delinquencyMinimumPaymentTypeOptions;
         public List<WorkingCapitalLoanProductApiResourceSwagger.GetWorkingCapitalLoanProductsResponse.GetWorkingCapitalLoanBreach> breachOptions;
     }
@@ -250,6 +251,8 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public StringEnumOptionData delinquencyStartType;
         @Schema(example = "0", description = "Number of days to shift the start of the first breach schedule period after disbursement")
         public Integer breachGraceDays;
+        @Schema(description = "Breach start type: LOAN_CREATION or DISBURSEMENT")
+        public StringEnumOptionData breachStartType;
         @Schema(example = "[2024, 1, 14]", description = "Start date of the loan's breach, i.e. the fromDate of the earliest breached "
                 + "breach schedule period (the breach grace days are already reflected in this date). Null when the loan is not in breach")
         public LocalDate breachStartDate;
@@ -293,6 +296,8 @@ public final class WorkingCapitalLoanApiResourceSwagger {
             @Schema(example = "10")
             public BigDecimal amountPaid;
             @Schema(example = "0")
+            public BigDecimal amountWrittenOff;
+            @Schema(example = "0")
             public BigDecimal amountOutstanding;
             @Schema(example = "false")
             public boolean penalty;
@@ -313,8 +318,12 @@ public final class WorkingCapitalLoanApiResourceSwagger {
             private GetWorkingCapitalLoanSummary() {}
 
             public CurrencyData currency;
+            @Schema(description = "Total principal due: original principal plus principalAdjustment. Already inclusive of "
+                    + "principalAdjustment — do not add the two together.")
             public BigDecimal principal;
             public BigDecimal principalPaid;
+            @Schema(description = "Principal re-injected by an over-refunding credit balance refund. Already included in principal.")
+            public BigDecimal principalAdjustment;
             public BigDecimal principalOutstanding;
             public BigDecimal fee;
             public BigDecimal feePaid;
@@ -340,10 +349,18 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public Boolean enableInstallmentLevelDelinquency;
         @Schema(description = "List of originators associated with this loan")
         public List<GetWorkingCapitalLoansLoanIdOriginatorData> originators;
-        @Schema(description = "Fraud flag. Placeholder: null until the WCP fraud feature is implemented")
+        @Schema(description = "Fraud flag. True when the loan has been marked as fraudulent", example = "false")
         public Boolean fraud;
-        @Schema(description = "Charge-off flag. Placeholder: null until the WCP charge-off feature is implemented")
+        @Schema(description = "Whether the loan is charged off (pure accounting tag; the loan stays active)")
         public Boolean chargedOff;
+        @Schema(description = "Date the loan was charged off", example = "2026-07-16")
+        public LocalDate chargedOffOnDate;
+        @Schema(description = "Charge-off reason code value, when one was provided")
+        public CodeValueData chargeOffReason;
+        @Schema(description = "Date the loan was written off. Cleared by an undo write-off", example = "2026-07-16")
+        public LocalDate writtenOffOnDate;
+        @Schema(description = "Write-off reason code value, when one was provided")
+        public CodeValueData writeOffReason;
 
         @Schema(description = "Originator data associated with the loan")
         public static final class GetWorkingCapitalLoansLoanIdOriginatorData {
@@ -376,6 +393,8 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public BigDecimal principal;
         @Schema(example = "10000.00")
         public BigDecimal principalPaid;
+        @Schema(example = "0.00")
+        public BigDecimal principalAdjustment;
         @Schema(example = "10000.00")
         public BigDecimal principalOutstanding;
         @Schema(example = "10000.00")
@@ -408,6 +427,8 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public BigDecimal totalDiscountFee;
         @Schema(example = "500.00")
         public BigDecimal totalDiscountFeeAdjustment;
+        @Schema(example = "250.00", description = "Cumulative breach past due amount, summed from each breach schedule period's outstanding amount")
+        public BigDecimal breachPastDueAmount;
     }
 
     @Schema(description = "Single disbursement detail (expected and actual)")
@@ -498,6 +519,8 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public String delinquencyStartType;
         @Schema(example = "0", description = "Number of days to shift the start of the first breach schedule period after disbursement")
         public Integer breachGraceDays;
+        @Schema(example = "DISBURSEMENT", description = "Breach start type: LOAN_CREATION or DISBURSEMENT")
+        public String breachStartType;
         public List<PostPaymentAllocationRule> paymentAllocation;
         @Schema(description = """
                 Optional array of originators to associate with this loan. \
@@ -634,6 +657,8 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public String delinquencyStartType;
         @Schema(example = "0", description = "Number of days to shift the start of the first breach schedule period after disbursement")
         public Integer breachGraceDays;
+        @Schema(example = "DISBURSEMENT", description = "Breach start type: LOAN_CREATION or DISBURSEMENT")
+        public String breachStartType;
         public List<PostWorkingCapitalLoansRequest.PostPaymentAllocationRule> paymentAllocation;
 
         @Schema(example = "en_GB")
@@ -821,11 +846,17 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         @Schema(example = "0.17", description = "New period payment rate")
         public BigDecimal periodPaymentRate;
 
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, example = "01 July 2022", description = "Date the new rate takes effect. Mandatory. May be backdated or set in the future, but not before the disbursement date.")
+        public String effectiveDate;
+
         @Schema(example = "Rate change note")
         public String note;
 
         @Schema(example = "en_GB")
         public String locale;
+
+        @Schema(example = "dd MMMM yyyy")
+        public String dateFormat;
     }
 
 }

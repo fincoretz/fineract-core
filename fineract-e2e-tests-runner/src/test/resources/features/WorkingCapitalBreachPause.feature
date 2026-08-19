@@ -1,4 +1,5 @@
 @WorkingCapital
+@WorkingCapitalBreach
 @WorkingCapitalBreachPauseFeature
 Feature: Working Capital Breach Pause
 
@@ -132,11 +133,11 @@ Feature: Working Capital Breach Pause
     And Admin runs inline COB job for Working Capital Loan by loanId
     And Admin initiate a Working Capital loan breach pause with startDate "15 January 2026" and endDate "25 January 2026"
     Then Initiating a Working Capital loan breach pause with startDate "20 January 2026" and endDate "30 January 2026" results an error with the following data:
-      | httpCode | message                                                  |
-      | 400      | Failed data validation due to: overlapping.pause.periods |
+      | httpCode | message                                                      |
+      | 400      | Breach pause period cannot overlap with another pause period |
     And Initiating a Working Capital loan breach pause with startDate "10 January 2026" and endDate "30 January 2026" results an error with the following data:
-      | httpCode | message                                                  |
-      | 400      | Failed data validation due to: overlapping.pause.periods |
+      | httpCode | message                                                      |
+      | 400      | Breach pause period cannot overlap with another pause period |
     And Working Capital loan breach action has the following data:
       | action | startDate  | endDate    |
       | PAUSE  | 2026-01-15 | 2026-01-25 |
@@ -253,13 +254,13 @@ Feature: Working Capital Breach Pause
     When Admin successfully disburse the Working Capital loan on "01 January 2026" with "9000" EUR transaction amount
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Initiating a Working Capital loan breach pause with startDate "25 January 2026" and endDate "15 January 2026" results an error with the following data:
-      | httpCode | message                                                      |
-      | 400      | Failed data validation due to: must.be.on.or.after.startDate |
+      | httpCode | message                                                     |
+      | 400      | End date of pause period must be on or after the start date |
     And Initiating a Working Capital loan breach pause with startDate "25 December 2025" and endDate "05 January 2026" results an error with the following data:
       | httpCode | message                                                                                  |
       | 400      | The parameter `startDate` must be greater than or equal to the provided date: 2026-01-01 |
     And Initiating a Working Capital loan breach action "invalid" with startDate "15 January 2026" and endDate "25 January 2026" results an error with the following data:
-      | httpCode | message                                                             |
+      | httpCode | message                                                                                                 |
       | 400      | The parameter `action` must be one of [ pause, reschedule, resume, reset, undo_reset, disable, enable ] |
     And Initiating a Working Capital loan breach action without "action" results an error with the following data:
       | httpCode | message                             |
@@ -284,36 +285,8 @@ Feature: Working Capital Breach Pause
     When Admin successfully disburse the Working Capital loan on "01 January 2026" with "9000" EUR transaction amount
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Initiating a Working Capital loan breach pause with startDate "15 January 2026" and endDate "25 January 2026" results an error with the following data:
-      | httpCode | message                                                |
-      | 400      | Failed data validation due to: no.breach.configuration |
-    Then Admin closes the Working Capital loan with a full repayment on "01 January 2026"
-
-  @TestRailId:C85245
-  Scenario: Verify working capital loan breach pause - pause start date is validated against the grace-shifted breach schedule start
-    When Admin sets the business date to "01 January 2026"
-    And Admin creates a client with random data
-    And Admin creates a Working Capital Loan Product with custom breach config and overrides enabled:
-      | breachFrequency | breachFrequencyType | breachAmountCalculationType | breachAmount | breachGraceDays |
-      | 7               | DAYS                | PERCENTAGE                  | 9            | 3               |
-    And Admin creates a working capital loan using created product with the following data:
-      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
-      | 01 January 2026 | 01 January 2026          | 9000            | 100000             | 18                | 1000     |
-    And Admin successfully approves the working capital loan on "01 January 2026" with "9000" amount and expected disbursement date on "01 January 2026"
-    When Admin successfully disburse the Working Capital loan on "01 January 2026" with "9000" EUR transaction amount and "1000" discount amount
-    And Admin runs inline COB job for Working Capital Loan by loanId
-    Then Working Capital loan breach schedule has the following data:
-      | periodNumber | fromDate   | toDate     | numberOfDays | minPaymentAmount | outstandingAmount | nearBreach | breach |
-      | 1            | 2026-01-04 | 2026-01-10 | 7            | 900.00           | 900.00            | null       | null   |
-    And Initiating a Working Capital loan breach pause with startDate "01 January 2026" and endDate "10 January 2026" results an error with the following data:
-      | httpCode | message                                                                                  |
-      | 400      | The parameter `startDate` must be greater than or equal to the provided date: 2026-01-04 |
-    When Admin initiate a Working Capital loan breach pause with startDate "04 January 2026" and endDate "08 January 2026"
-    Then Working Capital loan breach action has the following data:
-      | action | startDate  | endDate    |
-      | PAUSE  | 2026-01-04 | 2026-01-08 |
-    And Working Capital loan breach schedule has the following data:
-      | periodNumber | fromDate   | toDate     | numberOfDays | minPaymentAmount | outstandingAmount | nearBreach | breach |
-      | 1            | 2026-01-04 | 2026-01-15 | 12           | 900.00           | 900.00            | null       | null   |
+      | httpCode | message                                                                    |
+      | 400      | Breach actions require a breach configuration on the Working Capital loan. |
     Then Admin closes the Working Capital loan with a full repayment on "01 January 2026"
 
   @TestRailId:C85246
@@ -326,8 +299,8 @@ Feature: Working Capital Breach Pause
       | 01 January 2026 | 01 January 2026          | 9000            | 100000             | 18                | 0        |
     And Admin successfully approves the working capital loan on "01 January 2026" with "9000" amount and expected disbursement date on "01 January 2026"
     Then Initiating a Working Capital loan breach pause with startDate "15 January 2026" and endDate "25 January 2026" results an error with the following data:
-      | httpCode | message                                           |
-      | 400      | Failed data validation due to: loan.is.not.active |
+      | httpCode | message                                                              |
+      | 400      | Breach actions can be created only for active Working Capital loans. |
 
   @TestRailId:C85247
   Scenario: Verify working capital loan breach pause - backdated payment resets breach flag of an already breached period
@@ -376,8 +349,8 @@ Feature: Working Capital Breach Pause
     And Admin initiate a Working Capital loan breach pause with startDate "15 January 2026" and endDate "25 January 2026"
     # start and end are inclusive, so a second pause sharing the boundary day (25 Jan) overlaps and is rejected
     Then Initiating a Working Capital loan breach pause with startDate "25 January 2026" and endDate "05 February 2026" results an error with the following data:
-      | httpCode | message                                                  |
-      | 400      | Failed data validation due to: overlapping.pause.periods |
+      | httpCode | message                                                      |
+      | 400      | Breach pause period cannot overlap with another pause period |
     # a contiguous pause must start the day after the previous one ends, so the boundary day is not double-counted
     When Admin initiate a Working Capital loan breach pause with startDate "26 January 2026" and endDate "05 February 2026"
     Then Working Capital loan breach action has the following data:
@@ -593,8 +566,8 @@ Feature: Working Capital Breach Pause
     When Admin sets the business date to "20 January 2026"
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Initiating a Working Capital loan breach resume with startDate "20 January 2026" results an error with the following data:
-      | httpCode | message                                                       |
-      | 400      | Failed data validation due to: resume.not.during.active.pause |
+      | httpCode | message                                                         |
+      | 400      | Resume breach action can only be created during an active pause |
     Then Admin closes the Working Capital loan with a full repayment on "20 January 2026"
 
   @TestRailId:C85253
@@ -612,8 +585,8 @@ Feature: Working Capital Breach Pause
     When Admin sets the business date to "10 January 2026"
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Initiating a Working Capital loan breach resume with startDate "11 January 2026" results an error with the following data:
-      | httpCode | message                                                      |
-      | 400      | Failed data validation due to: must.be.current.business.date |
+      | httpCode | message                                                         |
+      | 400      | Start date of a resume action must be the current business date |
     Then Admin closes the Working Capital loan with a full repayment on "10 January 2026"
 
   @TestRailId:C85254
@@ -631,8 +604,8 @@ Feature: Working Capital Breach Pause
     When Admin sets the business date to "10 January 2026"
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Initiating a Working Capital loan breach action "resume" with startDate "10 January 2026" and endDate "20 January 2026" results an error with the following data:
-      | httpCode | message                                                        |
-      | 400      | Failed data validation due to: must.not.be.provided.for.resume |
+      | httpCode | message                                           |
+      | 400      | End date must not be provided for a resume action |
     Then Admin closes the Working Capital loan with a full repayment on "10 January 2026"
 
   @TestRailId:C85255
@@ -651,8 +624,8 @@ Feature: Working Capital Breach Pause
     And Admin runs inline COB job for Working Capital Loan by loanId
     And Admin initiate a Working Capital loan breach resume with startDate "10 January 2026"
     Then Initiating a Working Capital loan breach resume with startDate "10 January 2026" results an error with the following data:
-      | httpCode | message                                                       |
-      | 400      | Failed data validation due to: resume.not.during.active.pause |
+      | httpCode | message                                                         |
+      | 400      | Resume breach action can only be created during an active pause |
     Then Admin closes the Working Capital loan with a full repayment on "10 January 2026"
 
   @TestRailId:C85256
@@ -772,8 +745,8 @@ Feature: Working Capital Breach Pause
     When Admin sets the business date to "10 January 2026"
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Initiating a Working Capital loan breach resume with startDate "09 January 2026" results an error with the following data:
-      | httpCode | message                                                      |
-      | 400      | Failed data validation due to: must.be.current.business.date |
+      | httpCode | message                                                         |
+      | 400      | Start date of a resume action must be the current business date |
     Then Admin closes the Working Capital loan with a full repayment on "10 January 2026"
 
   @TestRailId:C85260
@@ -790,8 +763,8 @@ Feature: Working Capital Breach Pause
     When Admin sets the business date to "10 January 2026"
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Initiating a Working Capital loan breach resume with startDate "10 January 2026" results an error with the following data:
-      | httpCode | message                                                       |
-      | 400      | Failed data validation due to: resume.not.during.active.pause |
+      | httpCode | message                                                         |
+      | 400      | Resume breach action can only be created during an active pause |
     Then Admin closes the Working Capital loan with a full repayment on "10 January 2026"
 
   @TestRailId:C85261

@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.portfolio.client.domain.Client;
@@ -170,11 +171,77 @@ public class WorkingCapitalLoan extends AbstractAuditableWithUTCDateTimeCustom<L
     @Column(name = "total_payment_volume", scale = 6, precision = 19, nullable = false)
     private BigDecimal totalPaymentVolume;
 
+    /**
+     * Charge-off is a pure accounting tag: it does not affect the portfolio (balance, schedule) and the loan stays
+     * ACTIVE. Once set, the tag is cleared by an explicit undo, or automatically when reprocessing finds that preceding
+     * money-movers have already cleared the outstanding at the charge-off point.
+     */
+    @Column(name = "is_charged_off", nullable = false)
+    private boolean chargedOff;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "charge_off_reason_cv_id")
+    private CodeValue chargeOffReason;
+
+    @Column(name = "charged_off_on_date")
+    private LocalDate chargedOffOnDate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "charged_off_by_userid")
+    private AppUser chargedOffBy;
+
+    /**
+     * Flags the loan as fraudulent. When charged off, a fraudulent loan is routed to the charge-off fraud expense
+     * account instead of the regular charge-off expense account. Independent of the charge-off state itself.
+     */
+    @Setter
+    @Column(name = "is_fraud", nullable = false)
+    private boolean fraud = false;
+
+    /**
+     * Write-off is terminal: it zeroes the outstanding balance and moves the loan to {@code CLOSED_WRITTEN_OFF}. These
+     * audit fields record when it happened and the optional reason; they are cleared by an undo. All write-off
+     * behaviour (status transition, balance zeroing, audit) lives in {@code WorkingCapitalLoanWriteOffDomainService}.
+     */
+    @Setter
+    @Column(name = "written_off_on_date")
+    private LocalDate writtenOffOnDate;
+
+    @Setter
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "write_off_reason_cv_id")
+    private CodeValue writeOffReason;
+
     public Long getOfficeId() {
         return client != null && client.getOffice() != null ? client.getOffice().getId() : null;
     }
 
     public Long getClientId() {
         return client != null ? client.getId() : null;
+    }
+
+    /**
+     * Marks the account as charged-off. The {@code chargeOffReason} is optional and may be {@code null}.
+     */
+    public void markAsChargedOff(final LocalDate chargedOffOnDate, final AppUser chargedOffBy, final CodeValue chargeOffReason) {
+        this.chargedOff = true;
+        this.chargedOffOnDate = chargedOffOnDate;
+        this.chargedOffBy = chargedOffBy;
+        this.chargeOffReason = chargeOffReason;
+    }
+
+    /**
+     * Reverses the charge-off tag. Used by explicit undo and by auto-lift when reprocessing finds nothing left to
+     * charge off.
+     */
+    public void liftChargeOff() {
+        this.chargedOff = false;
+        this.chargedOffOnDate = null;
+        this.chargedOffBy = null;
+        this.chargeOffReason = null;
+    }
+
+    public Long fetchChargeOffReasonId() {
+        return this.chargeOffReason != null ? this.chargeOffReason.getId() : null;
     }
 }

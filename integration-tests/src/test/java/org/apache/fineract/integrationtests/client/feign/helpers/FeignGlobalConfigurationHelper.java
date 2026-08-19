@@ -29,9 +29,19 @@ import org.apache.fineract.client.models.PutGlobalConfigurationsRequest;
 public class FeignGlobalConfigurationHelper {
 
     private final FineractFeignClient fineractClient;
+    private final InternalConfigurationsApi internalConfigurationsApi;
 
     public FeignGlobalConfigurationHelper(FineractFeignClient fineractClient) {
         this.fineractClient = fineractClient;
+        this.internalConfigurationsApi = fineractClient.create(InternalConfigurationsApi.class);
+    }
+
+    /** Sets a numeric global configuration value and applies it immediately, without a tenant refresh. */
+    public void updateGlobalConfigurationInternal(String configName, Long value) {
+        ok(() -> {
+            internalConfigurationsApi.updateInternalGlobalConfiguration(configName, value);
+            return null;
+        });
     }
 
     public void enableOriginatorCreationDuringLoanApplication() {
@@ -43,8 +53,7 @@ public class FeignGlobalConfigurationHelper {
     }
 
     public void updateConfigurationByName(String configName, boolean enabled) {
-        Long configId = getConfigurationIdByName(configName);
-        ok(() -> fineractClient.globalConfiguration().updateGlobalConfiguration(configId,
+        ok(() -> fineractClient.globalConfiguration().updateConfigurationByName(configName,
                 new PutGlobalConfigurationsRequest().enabled(enabled)));
     }
 
@@ -53,14 +62,18 @@ public class FeignGlobalConfigurationHelper {
     }
 
     public void updateGlobalConfiguration(String configName, PutGlobalConfigurationsRequest request) {
-        Long configId = getConfigurationIdByName(configName);
-        ok(() -> fineractClient.globalConfiguration().updateGlobalConfiguration(configId, request));
+        ok(() -> fineractClient.globalConfiguration().updateConfigurationByName(configName, request));
     }
 
     public Long getConfigurationIdByName(String configName) {
         List<GlobalConfigurationPropertyData> configs = getConfigurationList();
         return configs.stream().filter(c -> configName.equals(c.getName())).findFirst().map(GlobalConfigurationPropertyData::getId)
                 .orElseThrow(() -> new RuntimeException("Configuration not found: " + configName));
+    }
+
+    public GlobalConfigurationPropertyData getGlobalConfigurationByName(String configName) {
+        List<GlobalConfigurationPropertyData> configs = getConfigurationList();
+        return configs.stream().filter(c -> configName.equals(c.getName())).findFirst().orElse(null);
     }
 
     private List<GlobalConfigurationPropertyData> getConfigurationList() {

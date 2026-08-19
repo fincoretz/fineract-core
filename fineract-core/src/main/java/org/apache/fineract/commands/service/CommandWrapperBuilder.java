@@ -909,6 +909,15 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder payoutRefundWorkingCapitalLoanTransaction(final Long loanId) {
+        this.actionName = ACTION_PAYOUTREFUND;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions?command=payoutRefund";
+        return this;
+    }
+
     public CommandWrapperBuilder creditBalanceRefundWorkingCapitalLoanTransaction(final Long loanId) {
         this.actionName = ACTION_CREDITBALANCEREFUND;
         this.entityName = ENTITY_WORKINGCAPITALLOAN;
@@ -922,6 +931,15 @@ public class CommandWrapperBuilder {
         this.entityName = "WORKINGCAPITALLOAN";
         this.entityId = loanId;
         this.href = "/workingcapitalloans/" + loanId;
+        return this;
+    }
+
+    public CommandWrapperBuilder markAsFraudWorkingCapitalLoan(final Long loanId) {
+        this.actionName = "SETFRAUD";
+        this.entityName = "WORKINGCAPITALLOAN";
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/mark-as-fraud";
         return this;
     }
 
@@ -1275,6 +1293,42 @@ public class CommandWrapperBuilder {
         this.entityId = loanId;
         this.loanId = loanId;
         this.href = "/working-capital-loans/" + loanId + "/transactions/template?command=goodwillcredit";
+        return this;
+    }
+
+    public CommandWrapperBuilder chargeOffWorkingCapitalLoanTransaction(final Long loanId) {
+        this.actionName = ACTION_CHARGEOFF;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions?command=chargeOff";
+        return this;
+    }
+
+    public CommandWrapperBuilder undoChargeOffWorkingCapitalLoanTransaction(final Long loanId) {
+        this.actionName = ACTION_UNDOCHARGEOFF;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions?command=undoChargeOff";
+        return this;
+    }
+
+    public CommandWrapperBuilder writeOffWorkingCapitalLoanTransaction(final Long loanId) {
+        this.actionName = ACTION_WRITEOFF;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions?command=writeOff";
+        return this;
+    }
+
+    public CommandWrapperBuilder undoWriteOffWorkingCapitalLoanTransaction(final Long loanId) {
+        this.actionName = ACTION_UNDOWRITEOFF;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions?command=undoWriteOff";
         return this;
     }
 

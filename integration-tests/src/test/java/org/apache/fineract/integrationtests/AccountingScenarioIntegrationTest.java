@@ -79,12 +79,14 @@ import org.apache.fineract.integrationtests.common.shares.ShareProductHelper;
 import org.apache.fineract.integrationtests.common.shares.ShareProductTransactionHelper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @SuppressWarnings({ "unchecked" })
+@Order(2)
 @ExtendWith(LoanTestLifecycleExtension.class)
 public class AccountingScenarioIntegrationTest {
 
@@ -125,7 +127,6 @@ public class AccountingScenarioIntegrationTest {
     private SavingsAccountHelper savingsAccountHelper;
     private FixedDepositAccountHelper fixedDepositAccountHelper;
     private RecurringDepositAccountHelper recurringDepositAccountHelper;
-    private SchedulerJobHelper schedulerJobHelper;
 
     private TimeZone tenantTimeZone;
 
@@ -140,7 +141,6 @@ public class AccountingScenarioIntegrationTest {
         this.loanTransactionHelper = new LoanTransactionHelper(requestSpec, responseSpec);
         this.accountHelper = new AccountHelper(requestSpec, responseSpec);
         this.journalEntryHelper = new JournalEntryHelper(requestSpec, responseSpec);
-        this.schedulerJobHelper = new SchedulerJobHelper(requestSpec);
         this.savingsAccountHelper = new SavingsAccountHelper(requestSpec, responseSpec);
 
         this.tenantTimeZone = TimeZone.getTimeZone(Utils.TENANT_TIME_ZONE);
@@ -729,7 +729,7 @@ public class AccountingScenarioIntegrationTest {
 
         final String jobName = "Add Accrual Transactions";
 
-        this.schedulerJobHelper.executeAndAwaitJob(jobName);
+        SchedulerJobHelper.executeAndAwaitJob(jobName);
 
         // MAKE 1
         LOG.info("Repayment 1 ......");
@@ -853,7 +853,7 @@ public class AccountingScenarioIntegrationTest {
 
         final String jobName = "Add Accrual Transactions";
 
-        this.schedulerJobHelper.executeAndAwaitJob(jobName);
+        SchedulerJobHelper.executeAndAwaitJob(jobName);
 
         // MAKE 1
         LOG.info("Repayment 1 ......");
@@ -952,7 +952,7 @@ public class AccountingScenarioIntegrationTest {
 
         final String jobName = "Add Periodic Accrual Transactions";
 
-        this.schedulerJobHelper.executeAndAwaitJob(jobName);
+        SchedulerJobHelper.executeAndAwaitJob(jobName);
 
         final ArrayList<HashMap> loanSchedule = this.loanTransactionHelper.getLoanRepaymentSchedule(requestSpec, responseSpec, loanID);
         // MAKE 1

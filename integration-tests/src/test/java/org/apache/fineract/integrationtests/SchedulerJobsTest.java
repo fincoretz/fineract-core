@@ -24,11 +24,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.fineract.client.models.GetJobsResponse;
 import org.apache.fineract.client.models.PutGlobalConfigurationsRequest;
 import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
 import org.apache.fineract.infrastructure.jobs.service.JobName;
@@ -46,7 +46,6 @@ public class SchedulerJobsTest {
 
     private final Map<Integer, Boolean> originalJobStatus = new ConcurrentHashMap<>();
     private RequestSpecification requestSpec;
-    private SchedulerJobHelper schedulerJobHelper;
     private Boolean originalSchedulerStatus;
     private GlobalConfigurationHelper globalConfigurationHelper;
 
@@ -56,21 +55,19 @@ public class SchedulerJobsTest {
         requestSpec = new RequestSpecBuilder().setContentType(ContentType.JSON).build();
         requestSpec.header("Authorization", "Basic " + Utils.loginIntoServerAndGetBase64EncodedAuthenticationKey());
         requestSpec.header("Fineract-Platform-TenantId", "default");
-        schedulerJobHelper = new SchedulerJobHelper(requestSpec);
-        originalSchedulerStatus = schedulerJobHelper.getSchedulerStatus();
-        ParallelExecutionHelper.runInParallel(schedulerJobHelper.getAllSchedulerJobIds(), (jobId) -> {
-            Map<String, Object> schedulerJob = schedulerJobHelper.getSchedulerJobById(jobId);
-            Boolean active = (Boolean) schedulerJob.get("active");
-            originalJobStatus.put(jobId, active);
+        originalSchedulerStatus = SchedulerJobHelper.getSchedulerStatus();
+        ParallelExecutionHelper.runInParallel(SchedulerJobHelper.getAllSchedulerJobIds(), (jobId) -> {
+            GetJobsResponse schedulerJob = SchedulerJobHelper.getSchedulerJobById(jobId);
+            originalJobStatus.put(jobId, schedulerJob.getActive());
         });
         globalConfigurationHelper = new GlobalConfigurationHelper();
     }
 
     @AfterEach
     public void tearDown() {
-        schedulerJobHelper.updateSchedulerStatus(originalSchedulerStatus);
-        ParallelExecutionHelper.runInParallel(schedulerJobHelper.getAllSchedulerJobIds(),
-                (jobId) -> schedulerJobHelper.updateSchedulerJob(jobId, originalJobStatus.get(jobId)));
+        SchedulerJobHelper.updateSchedulerStatus(originalSchedulerStatus);
+        ParallelExecutionHelper.runInParallel(SchedulerJobHelper.getAllSchedulerJobIds(),
+                (jobId) -> SchedulerJobHelper.updateSchedulerJob(jobId, originalJobStatus.get(jobId)));
     }
 
     @Test // FINERACT-926
@@ -78,26 +75,26 @@ public class SchedulerJobsTest {
         // must start scheduler and make job active to have nextRunTime (which
         // is a
         // java.util.Date)
-        schedulerJobHelper.updateSchedulerStatus(true);
-        int minJobId = schedulerJobHelper.getAllSchedulerJobIds().stream().mapToInt(number -> number).min().orElse(Integer.MAX_VALUE);
-        schedulerJobHelper.updateSchedulerJob(minJobId, true);
-        String nextRunTimeText = await().until(() -> (String) schedulerJobHelper.getSchedulerJobById(minJobId).get("nextRunTime"),
-                Objects::nonNull);
-        DateTimeFormatter.ISO_INSTANT.parse(nextRunTimeText);
+        SchedulerJobHelper.updateSchedulerStatus(true);
+        int minJobId = SchedulerJobHelper.getAllSchedulerJobIds().stream().mapToInt(number -> number).min().orElse(Integer.MAX_VALUE);
+        SchedulerJobHelper.updateSchedulerJob(minJobId, true);
+        // Feign already deserializes nextRunTime into a typed OffsetDateTime, so a malformed date would fail here
+        // with a deserialization error rather than needing to be manually parsed.
+        await().until(() -> SchedulerJobHelper.getSchedulerJobById(minJobId).getNextRunTime(), Objects::nonNull);
     }
 
     @Test
     public void testFlippingSchedulerStatus() throws InterruptedException {
         // Retrieving Status of Scheduler
-        Boolean schedulerStatus = schedulerJobHelper.getSchedulerStatus();
+        Boolean schedulerStatus = SchedulerJobHelper.getSchedulerStatus();
         if (schedulerStatus == true) {
-            schedulerJobHelper.updateSchedulerStatus(false);
-            schedulerStatus = schedulerJobHelper.getSchedulerStatus();
+            SchedulerJobHelper.updateSchedulerStatus(false);
+            schedulerStatus = SchedulerJobHelper.getSchedulerStatus();
             // Verifying Status of the Scheduler after stopping
             assertEquals(false, schedulerStatus, "Verifying Scheduler Job Status");
         } else {
-            schedulerJobHelper.updateSchedulerStatus(true);
-            schedulerStatus = schedulerJobHelper.getSchedulerStatus();
+            SchedulerJobHelper.updateSchedulerStatus(true);
+            schedulerStatus = SchedulerJobHelper.getSchedulerStatus();
             // Verifying Status of the Scheduler after starting
             assertEquals(true, schedulerStatus, "Verifying Scheduler Job Status");
         }
@@ -105,7 +102,7 @@ public class SchedulerJobsTest {
 
     @Test
     public void testNumberOfJobs() {
-        List<Integer> jobIds = schedulerJobHelper.getAllSchedulerJobIds();
+        List<Integer> jobIds = SchedulerJobHelper.getAllSchedulerJobIds();
         assertEquals(JobName.values().length, jobIds.size(), "Number of jobs in database and code do not match: " + jobIds);
     }
 
@@ -114,27 +111,26 @@ public class SchedulerJobsTest {
         // Stop the Scheduler while we test flapping jobs' active on/off, to
         // avoid side
         // effects
-        schedulerJobHelper.updateSchedulerStatus(false);
+        SchedulerJobHelper.updateSchedulerStatus(false);
 
         // For each retrieved scheduled job (by ID)...
-        ParallelExecutionHelper.runInParallel(schedulerJobHelper.getAllSchedulerJobIds(), this::updateJobStatus);
+        ParallelExecutionHelper.runInParallel(SchedulerJobHelper.getAllSchedulerJobIds(), this::updateJobStatus);
     }
 
     private void updateJobStatus(Integer jobId) {
         // Retrieving Scheduler Job by ID
-        Map<String, Object> schedulerJob = schedulerJobHelper.getSchedulerJobById(jobId);
+        GetJobsResponse schedulerJob = SchedulerJobHelper.getSchedulerJobById(jobId);
 
-        Boolean active = (Boolean) schedulerJob.get("active");
-        active = !active;
+        boolean active = !schedulerJob.getActive();
 
         // Updating Scheduler Job
-        Map<String, Object> changes = schedulerJobHelper.updateSchedulerJob(jobId, active);
+        Map<String, Object> changes = SchedulerJobHelper.updateSchedulerJob(jobId, active);
 
         // Verifying Scheduler Job updates
         assertEquals(active, changes.get("active"), "Verifying Scheduler Job Updates");
 
-        schedulerJob = schedulerJobHelper.getSchedulerJobById(jobId);
-        assertEquals(active, schedulerJob.get("active"), "Verifying Get Scheduler Job");
+        schedulerJob = SchedulerJobHelper.getSchedulerJobById(jobId);
+        assertEquals(active, schedulerJob.getActive(), "Verifying Get Scheduler Job");
     }
 
     @Test
@@ -143,7 +139,7 @@ public class SchedulerJobsTest {
             globalConfigurationHelper.updateGlobalConfiguration(GlobalConfigurationConstants.ENABLE_BUSINESS_DATE,
                     new PutGlobalConfigurationsRequest().enabled(true));
 
-            ParallelExecutionHelper.runInParallel(schedulerJobHelper.getAllSchedulerJobNames(), schedulerJobHelper::executeAndAwaitJob);
+            ParallelExecutionHelper.runInParallel(SchedulerJobHelper.getAllSchedulerJobNames(), SchedulerJobHelper::executeAndAwaitJob);
         } finally {
             globalConfigurationHelper.updateGlobalConfiguration(GlobalConfigurationConstants.ENABLE_BUSINESS_DATE,
                     new PutGlobalConfigurationsRequest().enabled(false));

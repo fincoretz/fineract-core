@@ -1,5 +1,6 @@
 @WorkingCapital
 @WCCOBFeature
+@Order(1)
 Feature: Working Capital COB Job
 
   Background:
@@ -9,13 +10,15 @@ Feature: Working Capital COB Job
   Scenario: Verify WC COB job registration, default business step, and scheduler metadata
     Then Admin checks that configured business jobs contain "WORKING_CAPITAL_LOAN_CLOSE_OF_BUSINESS"
     Then Admin verifies configured business steps for "WORKING_CAPITAL_LOAN_CLOSE_OF_BUSINESS" match:
-      | stepName                           | order |
-      | DUMMY_BUSINESS_STEP                | 1     |
-      | WC_DELINQUENCY_RANGE_SCHEDULE      | 2     |
-      | WC_LOAN_DELINQUENCY_CLASSIFICATION | 3     |
-      | WC_BREACH_SCHEDULE                 | 4     |
-      | WC_NEAR_BREACH_EVALUATION          | 5     |
-      | WC_DISCOUNT_FEE_AMORTIZATION       | 6     |
+      | stepName                              | order |
+      | DUMMY_BUSINESS_STEP                   | 1     |
+      | WC_MISSED_PAYMENT_ACKNOWLEDGEMENT     | 2     |
+      | WC_DELINQUENCY_RANGE_SCHEDULE         | 3     |
+      | WC_LOAN_DELINQUENCY_CLASSIFICATION    | 4     |
+      | WC_BREACH_SCHEDULE                    | 5     |
+      | WC_NEAR_BREACH_EVALUATION             | 6     |
+      | WC_DISCOUNT_FEE_AMORTIZATION          | 7     |
+      | WC_CHARGE_ACCRUAL                     | 8     |
     Then Admin verifies scheduler job "WC_COB" has display name "Working Capital Loan COB"
     Then Admin verifies scheduler job "WC_COB" has active status "false"
 
@@ -275,6 +278,7 @@ Feature: Working Capital COB Job
     When Admin runs WC COB job
     Then Admin verifies all inserted WC loans have no account locks
 
+
   Scenario: WC COB keeps a lock that carries an error message
     When Admin sets the business date to "01 January 2024"
     When Admin creates a client with random data
@@ -346,6 +350,7 @@ Feature: Working Capital COB Job
     When Admin places a chunk-processing lock without an error message and cob business date "31 December 2023" on the last inserted WC loan
     When Admin runs WC COB job
     Then Admin verifies all inserted WC loans have at least one account lock
+
 
   Scenario: WC COB removes only orphaned locks among multiple loans in the same run
     # Two loans share the same COB run: one carries an orphaned lock (no error) and must be unlocked;

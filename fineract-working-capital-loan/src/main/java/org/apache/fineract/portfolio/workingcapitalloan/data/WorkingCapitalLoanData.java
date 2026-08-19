@@ -27,6 +27,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 import org.apache.fineract.infrastructure.core.data.StringEnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
@@ -97,6 +98,7 @@ public class WorkingCapitalLoanData implements Serializable {
     private Integer delinquencyGraceDays;
     private StringEnumOptionData delinquencyStartType;
     private Integer breachGraceDays;
+    private StringEnumOptionData breachStartType;
     private BigDecimal totalPaymentVolume;
     private LocalDate delinquencyStartDate;
     private LocalDate breachStartDate;
@@ -106,4 +108,10 @@ public class WorkingCapitalLoanData implements Serializable {
     private List<LoanOriginatorData> originators;
     private Boolean fraud;
     private Boolean chargedOff;
+    private LocalDate chargedOffOnDate;
+    private CodeValueData chargeOffReason;
+    // Write-off has no boolean flag: unlike charge-off (which keeps the loan ACTIVE), the write-off state is already
+    // carried by status == CLOSED_WRITTEN_OFF.
+    private LocalDate writtenOffOnDate;
+    private CodeValueData writeOffReason;
 }

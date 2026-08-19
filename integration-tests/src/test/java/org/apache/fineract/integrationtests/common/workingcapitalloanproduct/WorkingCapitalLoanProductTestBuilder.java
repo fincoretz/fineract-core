@@ -80,6 +80,7 @@ public class WorkingCapitalLoanProductTestBuilder {
     private Integer delinquencyGraceDays;
     private String delinquencyStartType;
     private Integer breachGraceDays;
+    private String breachStartType;
     private AccountingRuleEnum accountingRule = DEFAULT_ACCOUNTING_RULE;
     private Long nearBreachId;
 
@@ -96,6 +97,10 @@ public class WorkingCapitalLoanProductTestBuilder {
     private Long writeOffAccountId;
     private Long overpaymentLiabilityAccountId;
     private Long deferredIncomeLiabilityAccountId;
+    private Long chargeOffExpenseAccountId;
+    private Long incomeFromChargeOffFeesAccountId;
+    private Long incomeFromChargeOffPenaltyAccountId;
+    private Long goodwillCreditAccountId;
 
     public WorkingCapitalLoanProductTestBuilder withName(final String name) {
         this.name = name;
@@ -243,6 +248,11 @@ public class WorkingCapitalLoanProductTestBuilder {
         return this;
     }
 
+    public WorkingCapitalLoanProductTestBuilder withBreachStartType(final String breachStartType) {
+        this.breachStartType = breachStartType;
+        return this;
+    }
+
     public WorkingCapitalLoanProductTestBuilder withAccountingRule(final AccountingRuleEnum accountingRule) {
         this.accountingRule = accountingRule;
         return this;
@@ -308,6 +318,26 @@ public class WorkingCapitalLoanProductTestBuilder {
         return this;
     }
 
+    public WorkingCapitalLoanProductTestBuilder withChargeOffExpenseAccountId(final Long chargeOffExpenseAccountId) {
+        this.chargeOffExpenseAccountId = chargeOffExpenseAccountId;
+        return this;
+    }
+
+    public WorkingCapitalLoanProductTestBuilder withIncomeFromChargeOffFeesAccountId(final Long incomeFromChargeOffFeesAccountId) {
+        this.incomeFromChargeOffFeesAccountId = incomeFromChargeOffFeesAccountId;
+        return this;
+    }
+
+    public WorkingCapitalLoanProductTestBuilder withIncomeFromChargeOffPenaltyAccountId(final Long incomeFromChargeOffPenaltyAccountId) {
+        this.incomeFromChargeOffPenaltyAccountId = incomeFromChargeOffPenaltyAccountId;
+        return this;
+    }
+
+    public WorkingCapitalLoanProductTestBuilder withGoodwillCreditAccountId(final Long goodwillCreditAccountId) {
+        this.goodwillCreditAccountId = goodwillCreditAccountId;
+        return this;
+    }
+
     public PostWorkingCapitalLoanProductsRequest build() {
         final PostWorkingCapitalLoanProductsRequest request = new PostWorkingCapitalLoanProductsRequest();
         populateCommonFields(request);
@@ -353,6 +383,7 @@ public class WorkingCapitalLoanProductTestBuilder {
         request.setDelinquencyGraceDays(this.delinquencyGraceDays);
         request.setDelinquencyStartType(this.delinquencyStartType);
         request.setBreachGraceDays(this.breachGraceDays);
+        request.setBreachStartType(this.breachStartType);
         request.setBreachId(this.breachId);
         request.setAccountingRule(this.accountingRule);
         request.setNearBreachId(this.nearBreachId);
@@ -368,6 +399,10 @@ public class WorkingCapitalLoanProductTestBuilder {
         request.setWriteOffAccountId(this.writeOffAccountId);
         request.setOverpaymentLiabilityAccountId(this.overpaymentLiabilityAccountId);
         request.setDeferredIncomeLiabilityAccountId(this.deferredIncomeLiabilityAccountId);
+        request.setChargeOffExpenseAccountId(this.chargeOffExpenseAccountId);
+        request.setIncomeFromChargeOffFeesAccountId(this.incomeFromChargeOffFeesAccountId);
+        request.setIncomeFromChargeOffPenaltyAccountId(this.incomeFromChargeOffPenaltyAccountId);
+        request.setGoodwillCreditAccountId(this.goodwillCreditAccountId);
         request.setLocale("en_US");
         request.setDateFormat("yyyy-MM-dd");
     }
@@ -400,6 +435,7 @@ public class WorkingCapitalLoanProductTestBuilder {
         request.setDelinquencyGraceDays(this.delinquencyGraceDays);
         request.setDelinquencyStartType(this.delinquencyStartType);
         request.setBreachGraceDays(this.breachGraceDays);
+        request.setBreachStartType(this.breachStartType);
         request.setBreachId(this.breachId);
         if (this.accountingRule != null) {
             request.setAccountingRule(PutWorkingCapitalLoanProductsProductIdRequest.AccountingRuleEnum.valueOf(this.accountingRule.name()));

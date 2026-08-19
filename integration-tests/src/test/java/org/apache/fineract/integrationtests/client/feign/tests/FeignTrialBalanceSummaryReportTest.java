@@ -68,6 +68,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Order(1)
 public class FeignTrialBalanceSummaryReportTest extends FeignIntegrationTest {
 
     private static final String REPORT_NAME = "Trial Balance Summary Report with Asset Owner";
@@ -380,7 +381,7 @@ public class FeignTrialBalanceSummaryReportTest extends FeignIntegrationTest {
                 .locale(LoanTestData.LOCALE)//
                 .dateFormat(LoanTestData.DATETIME_PATTERN);
 
-        Long loanId = loanHelper.applyForLoan(loanRequest);
+        Long loanId = loanHelper.applyForLoan(loanRequest).getLoanId();
         assertNotNull(loanId);
 
         if (chargeId != null) {
@@ -416,7 +417,7 @@ public class FeignTrialBalanceSummaryReportTest extends FeignIntegrationTest {
     }
 
     private Long createFlatFeeCharge(double amount) {
-        return chargesHelper.createLoanSpecifiedDueDateCharge(amount);
+        return chargesHelper.createLoanSpecifiedDueDateCharge(amount).getResourceId();
     }
 
     private Long createLoanProduct() {
@@ -453,6 +454,6 @@ public class FeignTrialBalanceSummaryReportTest extends FeignIntegrationTest {
                 .fundSourceAccountId((long) assetAccount.getAccountID())//
                 .incomeFromRecoveryAccountId((long) incomeAccount.getAccountID())//
                 .locale(LoanTestData.LOCALE)//
-                .dateFormat(LoanTestData.DATETIME_PATTERN));
+                .dateFormat(LoanTestData.DATETIME_PATTERN)).getResourceId();
     }
 }

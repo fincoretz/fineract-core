@@ -697,7 +697,7 @@ Feature: WorkingCapitalDiscountFeeAmortization
       | 197       | 2026-07-16 | 50.00                 | 149.68          |               | 0.21                       |                     |                          | 0.33                       |                          |
       | 198       | 2026-07-17 | 50.00                 | 99.84           |               | 0.16                       |                     |                          | 0.17                       |                          |
       | 199       | 2026-07-18 | 50.00                 | 49.95           |               | 0.11                       |                     |                          | 0.06                       |                          |
-      | 200       | 2026-07-19 | 50.00                 | 0.00            |               | 0.05                       |                     |                          | 0.01                       |                          |
+      | 200       | 2026-07-19 | 50.00                 | 0.00            |               | 0.06                       |                     |                          | 0.00                       |                          |
     When Admin sets the business date to "03 January 2026"
     When Admin runs inline COB job for Working Capital Loan
     And Working capital loan account has the correct data:
@@ -738,29 +738,30 @@ Feature: WorkingCapitalDiscountFeeAmortization
       | 0         | 2026-01-01 | -900.00               | 900.00          | 900.00        |                            |                     |                          | 100.00                     | 100.00                   |
       | 1         | 2026-01-01 | 50.00                 | 859.23          | 859.23        | 9.23                       | 50.00               | 9.23                     | 90.77                      | 90.77                    |
       | 2         | 2026-01-02 | 50.00                 | 818.03          | 859.23        | 8.81                       | 0.00                | 0.00                     | 81.96                      | 90.77                    |
-      | 3         | 2026-01-03 | 50.00                 | 776.42          | 859.23        | 8.39                       | 0.00                | 0.00                     | 73.57                      | 90.77                    |
-      | 4         | 2026-01-04 | 50.00                 | 734.38          | 859.23        | 7.96                       | 0.00                | 0.00                     | 65.61                      | 90.77                    |
-      | 5         | 2026-01-05 | 50.00                 | 691.91          | 859.23        | 7.53                       | 0.00                | 0.00                     | 58.08                      | 90.77                    |
-      | 6         | 2026-01-06 | 47.22                 | 640.52          |               | -4.17                      |                     |                          | 62.25                      |                          |
-      | 7         | 2026-01-07 | 47.22                 | 589.45          |               | -3.86                      |                     |                          | 66.11                      |                          |
-      | 8         | 2026-01-08 | 47.22                 | 538.68          |               | -3.55                      |                     |                          | 69.66                      |                          |
-      | 9         | 2026-01-09 | 47.22                 | 488.22          |               | -3.24                      |                     |                          | 72.90                      |                          |
-      | 10        | 2026-01-10 | 47.22                 | 438.06          |               | -2.94                      |                     |                          | 75.84                      |                          |
-      | 11        | 2026-01-11 | 47.22                 | 388.20          |               | -2.64                      |                     |                          | 78.48                      |                          |
-      | 12        | 2026-01-12 | 47.22                 | 338.65          |               | -2.34                      |                     |                          | 80.82                      |                          |
-      | 13        | 2026-01-13 | 47.22                 | 289.39          |               | -2.04                      |                     |                          | 82.86                      |                          |
-      | 14        | 2026-01-14 | 47.22                 | 240.42          |               | -1.74                      |                     |                          | 84.60                      |                          |
-      | 15        | 2026-01-15 | 47.22                 | 191.76          |               | -1.45                      |                     |                          | 86.05                      |                          |
-      | 16        | 2026-01-16 | 47.22                 | 143.38          |               | -1.15                      |                     |                          | 87.20                      |                          |
-      | 17        | 2026-01-17 | 47.22                 | 95.30           |               | -0.86                      |                     |                          | 88.06                      |                          |
-      | 18        | 2026-01-18 | 47.22                 | 47.51           |               | -0.57                      |                     |                          | 88.63                      |                          |
-      | 19        | 2026-01-19 | 47.22                 | 0.00            |               | -0.29                      |                     |                          | 88.92                      |                          |
-      | 20        | 2026-01-20 | 47.22                 | 0.00            |               | 0.00                       |                     |                          | 0.00                       |                          |
-      | 21        | 2026-01-21 | 47.22                 | 0.00            |               | 0.00                       |                     |                          | 0.00                       |                          |
-      | 22        | 2026-01-22 | 47.22                 | 0.00            |               | 0.00                       |                     |                          | 0.00                       |                          |
-      | 23        | 2026-01-23 | 47.22                 | 0.00            |               | 0.00                       |                     |                          | 0.00                       |                          |
-      | 24        | 2026-01-24 | 47.22                 | 0.00            |               | 0.00                       |                     |                          | 0.00                       |                          |
-      | 25        | 2026-01-25 | 11.12                 | 0.00            |               | 0.00                       |                     |                          | 0.00                       |                          |
+      | 3         | 2026-01-03 | 50.00                 | 818.03          | 859.23        | 8.81                       | 0.00                | 0.00                     | 81.96                      | 90.77                    |
+      | 4         | 2026-01-04 | 50.00                 | 818.03          | 859.23        | 8.81                       | 0.00                | 0.00                     | 81.96                      | 90.77                    |
+      | 5         | 2026-01-05 | 50.00                 | 818.03          | 859.23        | 8.81                       | 0.00                | 0.00                     | 81.96                      | 90.77                    |
+      | 6         | 2026-01-06 | 47.22                 | 820.35          |               | 8.34                       |                     |                          | 82.43                      |                          |
+      | 7         | 2026-01-07 | 47.22                 | 781.09          |               | 7.96                       |                     |                          | 74.47                      |                          |
+      | 8         | 2026-01-08 | 47.22                 | 741.45          |               | 7.58                       |                     |                          | 66.89                      |                          |
+      | 9         | 2026-01-09 | 47.22                 | 701.42          |               | 7.19                       |                     |                          | 59.70                      |                          |
+      | 10        | 2026-01-10 | 47.22                 | 661.01          |               | 6.81                       |                     |                          | 52.89                      |                          |
+      | 11        | 2026-01-11 | 47.22                 | 620.20          |               | 6.41                       |                     |                          | 46.48                      |                          |
+      | 12        | 2026-01-12 | 47.22                 | 579.00          |               | 6.02                       |                     |                          | 40.46                      |                          |
+      | 13        | 2026-01-13 | 47.22                 | 537.40          |               | 5.62                       |                     |                          | 34.84                      |                          |
+      | 14        | 2026-01-14 | 47.22                 | 495.40          |               | 5.21                       |                     |                          | 29.63                      |                          |
+      | 15        | 2026-01-15 | 47.22                 | 452.98          |               | 4.81                       |                     |                          | 24.82                      |                          |
+      | 16        | 2026-01-16 | 47.22                 | 410.16          |               | 4.40                       |                     |                          | 20.42                      |                          |
+      | 17        | 2026-01-17 | 47.22                 | 366.92          |               | 3.98                       |                     |                          | 16.44                      |                          |
+      | 18        | 2026-01-18 | 47.22                 | 323.26          |               | 3.56                       |                     |                          | 12.88                      |                          |
+      | 19        | 2026-01-19 | 47.22                 | 279.18          |               | 3.14                       |                     |                          | 9.74                       |                          |
+      | 20        | 2026-01-20 | 47.22                 | 234.66          |               | 2.71                       |                     |                          | 7.03                       |                          |
+      | 21        | 2026-01-21 | 47.22                 | 189.72          |               | 2.28                       |                     |                          | 4.75                       |                          |
+      | 22        | 2026-01-22 | 47.22                 | 144.34          |               | 1.84                       |                     |                          | 2.91                       |                          |
+      | 23        | 2026-01-23 | 47.22                 | 98.52           |               | 1.40                       |                     |                          | 1.51                       |                          |
+      | 24        | 2026-01-24 | 47.22                 | 52.26           |               | 0.96                       |                     |                          | 0.55                       |                          |
+      | 25        | 2026-01-25 | 47.22                 | 5.55            |               | 0.51                       |                     |                          | 0.04                       |                          |
+      | 26        | 2026-01-26 | 5.60                  | 0.00            |               | 0.04                       |                     |                          | 0.00                       |                          |
     And Working Capital Loan has transactions:
       | transactionDate | type                      | transactionAmount | principalPortion | feeChargesPortion | penaltyChargesPortion | reversed |
       | 01 January 2026 | Disbursement              | 900.0             | 900.0            | 0.0               | 0.0                   | false    |
@@ -794,7 +795,7 @@ Feature: WorkingCapitalDiscountFeeAmortization
       | paymentNo | date       | expectedPaymentAmount | expectedBalance | actualBalance | expectedAmortizationAmount | actualPaymentAmount | actualAmortizationAmount | expectedDiscountFeeBalance | actualDiscountFeeBalance |
       | 0         | 2026-01-01 | -900.00               | 900.00          | 900.00        |                            |                     |                          | 100.00                     | 100.00                   |
       | 1         | 2026-01-01 | 50.00                 | 859.23          | 859.23        | 9.23                       | 50.00               | 9.23                     | 90.77                      | 90.77                    |
-      | 2         | 2026-01-02 | 50.00                 | 818.03          | 818.03        | 8.81                       | 50.00               | 8.81                     | 81.96                      | 81.96                    |
+      | 2         | 2026-01-02 | 50.00                 | 818.03          | 818.04        | 8.81                       | 50.00               | 8.81                     | 81.96                      | 81.96                    |
       | 3         | 2026-01-03 | 50.00                 | 776.42          |               | 8.39                       |                     |                          | 73.57                      |                          |
       | 4         | 2026-01-04 | 50.00                 | 734.38          |               | 7.96                       |                     |                          | 65.61                      |                          |
       | 5         | 2026-01-05 | 50.00                 | 691.91          |               | 7.53                       |                     |                          | 58.08                      |                          |
@@ -812,7 +813,7 @@ Feature: WorkingCapitalDiscountFeeAmortization
       | 17        | 2026-01-17 | 50.00                 | 146.98          |               | 2.00                       |                     |                          | 2.99                       |                          |
       | 18        | 2026-01-18 | 50.00                 | 98.48           |               | 1.51                       |                     |                          | 1.48                       |                          |
       | 19        | 2026-01-19 | 50.00                 | 49.49           |               | 1.01                       |                     |                          | 0.47                       |                          |
-      | 20        | 2026-01-20 | 50.00                 | 0.00            |               | 0.51                       |                     |                          | -0.04                      |                          |
+      | 20        | 2026-01-20 | 50.00                 | 0.00            |               | 0.47                       |                     |                          | 0.00                       |                          |
     When Admin sets the business date to "03 January 2026"
     When Admin runs inline COB job for Working Capital Loan
     And Working capital loan account has the correct data:
@@ -1072,3 +1073,21 @@ Feature: WorkingCapitalDiscountFeeAmortization
       | INCOME    | 404000       | Interest Income           |       | 5.14   |
       | LIABILITY | 240005       | Deferred Interest Revenue | 5.14  |        |
 
+  @TestRailId:C94061
+  Scenario: Working Capital loan raises Discount Fee Amortization transaction business event from the COB run
+    When Admin sets the business date to "01 January 2026"
+    And Admin creates a client with random data
+    And Admin creates a working capital loan with the following data:
+      | LoanProduct              | submittedOnDate | expectedDisbursementDate | principalAmount | totalPayment | periodPaymentRate | discount |
+      | WCLP_ADVANCED_ACCOUNTING | 01 January 2026 | 01 January 2026          | 9000            | 100000       | 18                | 0        |
+    And Admin successfully approves the working capital loan on "01 January 2026" with "9000" amount and expected disbursement date on "01 January 2026"
+    And a Working Capital Loan Balance Changed business event is raised on approval
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "9000" EUR transaction amount
+    And Admin adds Discount fee with "1000" amount on Working Capital loan account for last disbursement
+    When Admin sets the business date to "05 January 2026"
+    And Admin runs inline COB job for Working Capital Loan
+    And Customer makes repayment on "05 January 2026" with 50 transaction amount on Working Capital loan
+    When Admin sets the business date to "06 January 2026"
+    And Admin runs inline COB job for Working Capital Loan
+    Then a Working Capital Loan Discount Fee Amortization transaction business event is raised on "05 January 2026"
+    Then Admin closes the Working Capital loan with a full repayment on "06 January 2026"

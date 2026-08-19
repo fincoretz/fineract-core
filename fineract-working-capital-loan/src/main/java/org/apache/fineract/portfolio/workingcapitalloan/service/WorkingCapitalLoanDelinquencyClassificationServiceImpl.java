@@ -31,11 +31,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.configuration.domain.GlobalConfigurationRepositoryWrapper;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanDelinquencyRangeChangeBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyBucket;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyRange;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanDelinquencyRangeSchedule;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanDelinquencyRangeScheduleTagHistory;
+import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanDelinquencyActionRepository;
 import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanDelinquencyRangeScheduleRepository;
 import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanDelinquencyRangeScheduleTagHistoryRepository;
 import org.springframework.stereotype.Service;
@@ -47,7 +50,9 @@ public class WorkingCapitalLoanDelinquencyClassificationServiceImpl implements W
 
     private final WorkingCapitalLoanDelinquencyRangeScheduleRepository delinquencyRangeScheduleRepository;
     private final WorkingCapitalLoanDelinquencyRangeScheduleTagHistoryRepository delinquencyRangeScheduleTagHistoryRepository;
+    private final WorkingCapitalLoanDelinquencyActionRepository delinquencyActionRepository;
     private final GlobalConfigurationRepositoryWrapper globalConfigurationRepository;
+    private final BusinessEventNotifierService businessEventNotifierService;
 
     /**
      * If ENABLE_INSTANT_DELINQUENCY_CALCULATION is set to true in global config, classifies the delinquency of a loan
@@ -79,13 +84,18 @@ public class WorkingCapitalLoanDelinquencyClassificationServiceImpl implements W
             log.debug("Skipping... Delinquency bucket is not configured for Working Capital Loan {}.", loan.getId());
             return;
         }
+        if (isDelinquencyDisabled(loan, businessDate)) {
+            log.debug("Skipping... Delinquency evaluation is disabled for Working Capital Loan {} as of {}.", loan.getId(), businessDate);
+            return;
+        }
         log.debug("Evaluate {} Working Capital Delinquency bucket", loan.getLoanProductRelatedDetails().getDelinquencyBucket());
 
         List<WorkingCapitalLoanDelinquencyRangeSchedule> delinquencyRangeScheduleList = delinquencyRangeScheduleRepository
                 .findByLoanIdOrderByPeriodNumberAsc(loan.getId());
 
+        boolean delinquencyRangeChanged = false;
         for (WorkingCapitalLoanDelinquencyRangeSchedule range : delinquencyRangeScheduleList) {
-            if (range.getToDate().isBefore(businessDate)) {
+            if (!Objects.equals(range.getReset(), true) && range.getToDate().isBefore(businessDate)) {
                 long rangeDelinquentDays = range.getOutstandingAmount().compareTo(BigDecimal.ZERO) > 0
                         ? DateUtils.getDifferenceInDays(range.getToDate(), businessDate)
                         : 0L;
@@ -96,14 +106,46 @@ public class WorkingCapitalLoanDelinquencyClassificationServiceImpl implements W
                     range.setDelinquentDays(rangeDelinquentDays);
                     Optional<DelinquencyRange> delinquencyRangeByDays = findDelinquencyRangeByDays(
                             loan.getLoanProductRelatedDetails().getDelinquencyBucket(), (int) rangeDelinquentDays);
-                    applyDelinquencyTagForRange(loan, range, delinquencyRangeByDays.orElse(null), businessDate);
+                    delinquencyRangeChanged |= applyDelinquencyTagForRange(loan, range, delinquencyRangeByDays.orElse(null), businessDate);
                 } else {
                     range.setDelinquentAmount(BigDecimal.ZERO);
                     range.setDelinquentDays(0L);
-                    applyDelinquencyTagForRange(loan, range, null, businessDate);
+                    delinquencyRangeChanged |= applyDelinquencyTagForRange(loan, range, null, businessDate);
                 }
             }
         }
+
+        if (delinquencyRangeChanged) {
+            delinquencyRangeScheduleTagHistoryRepository.flush();
+            businessEventNotifierService.notifyPostBusinessEvent(new WorkingCapitalLoanDelinquencyRangeChangeBusinessEvent(loan));
+        }
+    }
+
+    /**
+     * Returns true when an active Delinquency Disable action (one that has not yet been reversed) is in effect on the
+     * given date for the loan. While disabled, delinquency evaluation is skipped from the disable date onward.
+     */
+    @Override
+    public boolean isDelinquencyDisabled(final WorkingCapitalLoan loan, final LocalDate date) {
+        return delinquencyActionRepository.isDelinquencyDisabledAsOf(loan.getId(), date);
+    }
+
+    /**
+     * Lifts every active delinquency classification tag of the loan as of the given date. Used when delinquency
+     * evaluation is disabled: the loan must not remain classified while the disable is in effect; classification is
+     * recomputed when the disable is reversed.
+     */
+    @Override
+    public void liftDelinquencyClassification(final WorkingCapitalLoan loan, final LocalDate businessDate) {
+        final List<WorkingCapitalLoanDelinquencyRangeScheduleTagHistory> activeTags = delinquencyRangeScheduleTagHistoryRepository
+                .findByLoanIdAndLiftedOnDateIsNull(loan.getId());
+        if (activeTags.isEmpty()) {
+            return;
+        }
+        activeTags.forEach(tag -> tag.setLiftedOnDate(businessDate));
+        delinquencyRangeScheduleTagHistoryRepository.saveAll(activeTags);
+        log.debug("Lifted {} active delinquency classification tag(s) for WC loan {} as of {}", activeTags.size(), loan.getId(),
+                businessDate);
     }
 
     public boolean instantDelinquencyClassificationIsEnabled() {
@@ -119,7 +161,7 @@ public class WorkingCapitalLoanDelinquencyClassificationServiceImpl implements W
      *            the number of days the loan is delinquent
      * @return an Optional containing the matching delinquency range, or empty if not found
      */
-    public Optional<DelinquencyRange> findDelinquencyRangeByDays(final DelinquencyBucket delinquencyBucket, final Integer delinquentDays) {
+    private Optional<DelinquencyRange> findDelinquencyRangeByDays(final DelinquencyBucket delinquencyBucket, final Integer delinquentDays) {
         return delinquencyBucket.getRanges().stream().filter(dr -> dr.getMinimumAgeDays() <= delinquentDays)
                 .filter(dr -> dr.getMaximumAgeDays() == null || dr.getMaximumAgeDays() >= delinquentDays).findAny();
     }
@@ -136,8 +178,10 @@ public class WorkingCapitalLoanDelinquencyClassificationServiceImpl implements W
      *            the current delinquency range to be applied; can be null to lift all previous tags
      * @param businessDate
      *            the date on which the tagging operation is performed
+     * @return true if the tag history was changed (a tag added or lifted), false if nothing changed
      */
-    public void applyDelinquencyTagForRange(final WorkingCapitalLoan loan, final WorkingCapitalLoanDelinquencyRangeSchedule range,
+    @Override
+    public boolean applyDelinquencyTagForRange(final WorkingCapitalLoan loan, final WorkingCapitalLoanDelinquencyRangeSchedule range,
             final DelinquencyRange currentRange, final LocalDate businessDate) {
         List<WorkingCapitalLoanDelinquencyRangeScheduleTagHistory> updatedList = new ArrayList<>();
         List<WorkingCapitalLoanDelinquencyRangeScheduleTagHistory> rangeScheduleTagHistoryList = delinquencyRangeScheduleTagHistoryRepository
@@ -149,7 +193,7 @@ public class WorkingCapitalLoanDelinquencyClassificationServiceImpl implements W
         // do nothing if currentRange is in rangeScheduleTagHistoryList or last and currentRange are null
         if ((last == null && currentRange == null) || (last != null && currentRange != null && rangeScheduleTagHistoryList.stream()
                 .anyMatch(tag -> Objects.equals(tag.getDelinquencyRange().getId(), currentRange.getId())))) {
-            return;
+            return false;
         }
 
         if (currentRange == null) {
@@ -168,6 +212,7 @@ public class WorkingCapitalLoanDelinquencyClassificationServiceImpl implements W
         }
 
         delinquencyRangeScheduleTagHistoryRepository.saveAll(updatedList);
+        return !updatedList.isEmpty();
     }
 
 }

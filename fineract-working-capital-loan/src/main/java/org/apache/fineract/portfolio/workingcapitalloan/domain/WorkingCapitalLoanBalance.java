@@ -56,6 +56,10 @@ public class WorkingCapitalLoanBalance extends AbstractAuditableWithUTCDateTimeC
     @Setter
     private BigDecimal principalPaid = BigDecimal.ZERO;
 
+    @Column(name = "principal_adjustment", scale = 6, precision = 19, nullable = false)
+    @Setter
+    private BigDecimal principalAdjustment = BigDecimal.ZERO;
+
     @Column(name = "fee", scale = 6, precision = 19, nullable = false)
     @Setter
     private BigDecimal fee = BigDecimal.ZERO;
@@ -71,6 +75,22 @@ public class WorkingCapitalLoanBalance extends AbstractAuditableWithUTCDateTimeC
     @Column(name = "penalty_paid", scale = 6, precision = 19, nullable = false)
     @Setter
     private BigDecimal penaltyPaid = BigDecimal.ZERO;
+
+    /**
+     * Portions moved out of the outstanding balance by a write-off. They lower the computed outstanding to zero without
+     * touching the paid columns, so an undo simply resets them back to zero and the original outstanding reappears.
+     */
+    @Column(name = "principal_written_off", scale = 6, precision = 19, nullable = false)
+    @Setter
+    private BigDecimal principalWrittenOff = BigDecimal.ZERO;
+
+    @Column(name = "fee_written_off", scale = 6, precision = 19, nullable = false)
+    @Setter
+    private BigDecimal feeWrittenOff = BigDecimal.ZERO;
+
+    @Column(name = "penalty_written_off", scale = 6, precision = 19, nullable = false)
+    @Setter
+    private BigDecimal penaltyWrittenOff = BigDecimal.ZERO;
 
     @Column(name = "realized_income_from_discount_fee", scale = 6, precision = 19, nullable = false)
     @Setter
@@ -92,6 +112,10 @@ public class WorkingCapitalLoanBalance extends AbstractAuditableWithUTCDateTimeC
     @Setter
     private BigDecimal totalDiscountFeeAdjustment = BigDecimal.ZERO;
 
+    @Column(name = "breach_pastdue_amount", scale = 6, precision = 19, nullable = false)
+    @Setter
+    private BigDecimal breachPastDueAmount = BigDecimal.ZERO;
+
     @Version
     @Column(name = "version")
     private Integer version;
@@ -112,16 +136,20 @@ public class WorkingCapitalLoanBalance extends AbstractAuditableWithUTCDateTimeC
         this.overpaymentAmount = BigDecimal.ZERO;
     }
 
+    public BigDecimal getTotalPrincipalDue() {
+        return MathUtil.add(getPrincipal(), getPrincipalAdjustment());
+    }
+
     public BigDecimal getPrincipalOutstanding() {
-        return MathUtil.subtract(getPrincipal(), getPrincipalPaid()).max(BigDecimal.ZERO);
+        return MathUtil.subtract(getTotalPrincipalDue(), getPrincipalPaid(), getPrincipalWrittenOff()).max(BigDecimal.ZERO);
     }
 
     public BigDecimal getFeeOutstanding() {
-        return MathUtil.subtract(getFee(), getFeePaid()).max(BigDecimal.ZERO);
+        return MathUtil.subtract(getFee(), getFeePaid(), getFeeWrittenOff()).max(BigDecimal.ZERO);
     }
 
     public BigDecimal getPenaltyOutstanding() {
-        return MathUtil.subtract(getPenalty(), getPenaltyPaid()).max(BigDecimal.ZERO);
+        return MathUtil.subtract(getPenalty(), getPenaltyPaid(), getPenaltyWrittenOff()).max(BigDecimal.ZERO);
     }
 
     public BigDecimal getTotalOutstanding() {
@@ -129,7 +157,7 @@ public class WorkingCapitalLoanBalance extends AbstractAuditableWithUTCDateTimeC
     }
 
     public BigDecimal getTotalExpectedRepayment() {
-        return MathUtil.add(getPrincipal()).add(getPenalty()).add(getFee());
+        return MathUtil.add(getPrincipal()).add(getPrincipalAdjustment()).add(getPenalty()).add(getFee());
     }
 
     public BigDecimal getTotalRepayment() {

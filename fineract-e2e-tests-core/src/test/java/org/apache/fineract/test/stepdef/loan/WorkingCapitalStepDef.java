@@ -122,6 +122,7 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
     public static final String DELINQUENCY_START_TYPE_FIELD_NAME = "delinquencyStartType";
     public static final String BREACH_GRACE_DAYS_FIELD_NAME = "breachGraceDays";
     public static final String BREACH_ID_FIELD_NAME = "breachId";
+    public static final String BREACH_START_TYPE_FIELD_NAME = "breachStartType";
     public static final String NEAR_BREACH_ID_FIELD_NAME = "nearBreachId";
     public static final String LOCALE_FIELD_NAME = "locale";
 
@@ -324,10 +325,9 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         checkWorkingCapitalLoanProductCreate();
     }
 
-    @When("Admin creates a Working Capital Loan Product with custom breach config and overrides enabled:")
-    public void createWorkingCapitalLoanProductWithCustomBreachConfig(final DataTable table) {
+    @When("Admin creates a new Working Capital Breach Configuration:")
+    public Long createBreach(final DataTable table) {
         final Map<String, String> data = table.asMaps().getFirst();
-
         final String breachName = "WC Breach " + Utils.randomStringGenerator("", 10);
         final WorkingCapitalBreachRequest breachRequest = new WorkingCapitalBreachRequest().name(breachName)
                 .breachFrequency(Integer.valueOf(data.get("breachFrequency"))).breachFrequencyType(data.get("breachFrequencyType"))
@@ -337,12 +337,37 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
                 () -> fineractFeignClient.workingCapitalBreaches().createWorkingCapitalBreach(breachRequest));
         final Long breachId = breachCreateResponse.getResourceId();
         testContext().set(TestContextKey.WORKING_CAPITAL_BREACH_ID, breachId);
+        return breachId;
+    }
+
+    @When("Admin creates a new Working Capital Near Breach Configuration:")
+    public Long createNearBreach(final DataTable table) {
+        final Map<String, String> data = table.asMaps().getFirst();
+        final WorkingCapitalNearBreachRequest nearBreachRequest = new WorkingCapitalNearBreachRequest()
+                .nearBreachName("WC Near Breach " + Utils.randomStringGenerator("", 10))
+                .nearBreachFrequency(Integer.valueOf(data.get("nearBreachFrequency")))
+                .nearBreachFrequencyType(data.get("nearBreachFrequencyType"))
+                .nearBreachThreshold(new BigDecimal(data.get("nearBreachThreshold")));
+        final CommandProcessingResult nearBreachCreateResponse = ok(
+                () -> fineractFeignClient.workingCapitalNearBreaches().createWorkingCapitalNearBreach(nearBreachRequest));
+        final Long nearBreachId = nearBreachCreateResponse.getResourceId();
+        testContext().set(TestContextKey.WORKING_CAPITAL_NEAR_BREACH_ID, nearBreachId);
+        return nearBreachId;
+    }
+
+    @When("Admin creates a Working Capital Loan Product with custom breach config and overrides enabled:")
+    public void createWorkingCapitalLoanProductWithCustomBreachConfig(final DataTable table) {
+        final Map<String, String> data = table.asMaps().getFirst();
+
+        final Long breachId = createBreach(table);
 
         final String graceDaysStr = data.get("delinquencyGraceDays");
         final Integer graceDays = graceDaysStr != null && !graceDaysStr.isEmpty() ? Integer.valueOf(graceDaysStr) : null;
         final String breachGraceDaysStr = data.get(BREACH_GRACE_DAYS_FIELD_NAME);
         final Integer breachGraceDays = breachGraceDaysStr != null && !breachGraceDaysStr.isEmpty() ? Integer.valueOf(breachGraceDaysStr)
                 : null;
+        final String breachStartTypeStr = data.get(BREACH_START_TYPE_FIELD_NAME);
+        final String breachStartType = breachStartTypeStr != null && !breachStartTypeStr.isEmpty() ? breachStartTypeStr : null;
 
         final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory
@@ -350,7 +375,8 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
                 .name(name) //
                 .breachId(breachId) //
                 .delinquencyGraceDays(graceDays) //
-                .breachGraceDays(breachGraceDays);
+                .breachGraceDays(breachGraceDays) //
+                .breachStartType(breachStartType);
 
         final PostWorkingCapitalLoanProductsResponse response = createWorkingCapitalLoanProduct(request);
         testContext().set(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_CREATE_RESPONSE, response);
@@ -387,6 +413,8 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         final String breachGraceDaysStr = data.get(BREACH_GRACE_DAYS_FIELD_NAME);
         final Integer breachGraceDays = breachGraceDaysStr != null && !breachGraceDaysStr.isEmpty() ? Integer.valueOf(breachGraceDaysStr)
                 : null;
+        final String breachStartTypeStr = data.get(BREACH_START_TYPE_FIELD_NAME);
+        final String breachStartType = breachStartTypeStr != null && !breachStartTypeStr.isEmpty() ? breachStartTypeStr : null;
 
         final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
         final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory
@@ -395,7 +423,8 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
                 .breachId(breachId) //
                 .nearBreachId(nearBreachId) //
                 .delinquencyGraceDays(graceDays) //
-                .breachGraceDays(breachGraceDays);
+                .breachGraceDays(breachGraceDays) //
+                .breachStartType(breachStartType);
 
         final PostWorkingCapitalLoanProductsResponse response = createWorkingCapitalLoanProduct(request);
         testContext().set(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_CREATE_RESPONSE, response);
@@ -442,6 +471,23 @@ public class WorkingCapitalStepDef extends AbstractStepDef {
         testContext().set(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_CREATE_RESPONSE, responseDefaultWorkingCapitalLoanProductCreate);
         testContext().set(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_CREATE_REQUEST, defaultWorkingCapitalLoanProductCreateRequest);
         checkWorkingCapitalLoanProductWithExternalIdCreate();
+    }
+
+    @When("Admin creates a new Working Capital Loan Product with discount value {string} that is forbidden to be overriden")
+    public void createWorkingCapitalLoanProductNonOverridenDiscount(String discount) {
+        final String name = DefaultWorkingCapitalLoanProduct.WCLP.getName() + Utils.randomStringGenerator("_", RANDOM_NAME_SUFFIX_LENGTH);
+        PostAllowAttributeOverrides allowAttributeOverrides = new PostAllowAttributeOverrides().delinquencyBucketClassification(true)
+                .breach(true).discountDefault(false).periodPaymentFrequencyType(true).periodPaymentFrequency(true);
+
+        final PostWorkingCapitalLoanProductsRequest request = workingCapitalRequestFactory.defaultWorkingCapitalLoanProductRequest() //
+                .name(name) //
+                .allowAttributeOverrides(allowAttributeOverrides) //
+                .discount(new BigDecimal(discount));
+
+        final PostWorkingCapitalLoanProductsResponse response = createWorkingCapitalLoanProduct(request);
+        testContext().set(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_CREATE_RESPONSE, response);
+        testContext().set(TestContextKey.WORKING_CAPITAL_LOAN_PRODUCT_CREATE_REQUEST, request);
+        checkWorkingCapitalLoanProductCreate();
     }
 
     @Then("Admin failed to create a new Working Capital Loan Product field {string} with empty or null mandatory data {string}")

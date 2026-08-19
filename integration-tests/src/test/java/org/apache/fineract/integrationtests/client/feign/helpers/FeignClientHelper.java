@@ -22,14 +22,17 @@ import static org.apache.fineract.client.feign.util.FeignCalls.fail;
 import static org.apache.fineract.client.feign.util.FeignCalls.ok;
 
 import java.util.Collections;
+import java.util.Map;
 import org.apache.fineract.client.feign.FineractFeignClient;
 import org.apache.fineract.client.feign.util.CallFailedRuntimeException;
 import org.apache.fineract.client.models.ClientTextSearch;
 import org.apache.fineract.client.models.DeleteClientsClientIdResponse;
 import org.apache.fineract.client.models.GetClientsClientIdAccountsResponse;
 import org.apache.fineract.client.models.GetClientsClientIdResponse;
+import org.apache.fineract.client.models.GetClientsResponse;
 import org.apache.fineract.client.models.PageClientSearchData;
 import org.apache.fineract.client.models.PagedRequestClientTextSearch;
+import org.apache.fineract.client.models.PostClientsClientIdChanges;
 import org.apache.fineract.client.models.PostClientsClientIdRequest;
 import org.apache.fineract.client.models.PostClientsClientIdResponse;
 import org.apache.fineract.client.models.PostClientsRequest;
@@ -49,6 +52,7 @@ public class FeignClientHelper {
     private static final String WITHDRAW_COMMAND = "withdraw";
     private static final String UNDO_REJECTION_COMMAND = "undoRejection";
     private static final String UNDO_WITHDRAWAL_COMMAND = "undoWithdrawal";
+    private static final String ASSIGN_STAFF_COMMAND = "assignStaff";
 
     private final FineractFeignClient fineractClient;
 
@@ -105,6 +109,16 @@ public class FeignClientHelper {
         return ok(() -> fineractClient.clients().retrieveAllClientAccounts(clientId));
     }
 
+    public GetClientsClientIdAccountsResponse getClientAccounts(String externalId) {
+        return ok(() -> fineractClient.clients().retrieveAllClientAccountsByExternalId(externalId));
+    }
+
+    /** Number of clients carrying the given external id; {@code 0} when no client was created with it. */
+    public Integer countClientsByExternalId(String externalId) {
+        GetClientsResponse clients = ok(() -> fineractClient.clients().retrieveAllClients(Map.of("externalId", externalId)));
+        return clients.getTotalFilteredRecords();
+    }
+
     public PageClientSearchData searchClients(String text) {
         ClientTextSearch clientTextSearch = new ClientTextSearch();
         clientTextSearch.setText(text);
@@ -147,5 +161,16 @@ public class FeignClientHelper {
 
     public DeleteClientsClientIdResponse deleteClient(Long clientId) {
         return ok(() -> fineractClient.clients().deleteClient(clientId));
+    }
+
+    /** Assigns a staff member to the client; returns the {@code changes} object. */
+    public PostClientsClientIdChanges assignStaffToClient(Long clientId, Long staffId) {
+        PostClientsClientIdRequest request = new PostClientsClientIdRequest().staffId(staffId);
+        return ok(() -> fineractClient.clients().handleCommandClient(clientId, request, ASSIGN_STAFF_COMMAND)).getChanges();
+    }
+
+    /** The staff id currently assigned to the client, or {@code null} if none. */
+    public Long getClientStaffId(Long clientId) {
+        return getClient(clientId).getStaffId();
     }
 }

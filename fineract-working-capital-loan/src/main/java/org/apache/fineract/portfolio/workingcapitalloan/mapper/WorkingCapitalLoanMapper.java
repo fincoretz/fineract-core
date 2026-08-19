@@ -20,6 +20,8 @@ package org.apache.fineract.portfolio.workingcapitalloan.mapper;
 
 import java.time.LocalDate;
 import java.util.List;
+import org.apache.fineract.infrastructure.codes.data.CodeValueData;
+import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.core.config.MapstructMapperConfig;
 import org.apache.fineract.infrastructure.core.data.StringEnumOptionData;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
@@ -76,6 +78,7 @@ public interface WorkingCapitalLoanMapper {
     @Mapping(target = "delinquencyGraceDays", source = "loanProductRelatedDetails.delinquencyGraceDays")
     @Mapping(target = "delinquencyStartType", source = "loanProductRelatedDetails", qualifiedByName = "delinquencyStartTypeData")
     @Mapping(target = "breachGraceDays", source = "loanProductRelatedDetails.breachGraceDays")
+    @Mapping(target = "breachStartType", source = "loanProductRelatedDetails", qualifiedByName = "breachStartTypeData")
     @Mapping(target = "breachStartDate", ignore = true)
     @Mapping(target = "delinquencyStartDate", ignore = true)
     @Mapping(target = "delinquent", ignore = true)
@@ -93,8 +96,9 @@ public interface WorkingCapitalLoanMapper {
     @Mapping(target = "netDisbursalAmount", ignore = true)
     @Mapping(target = "charges", ignore = true)
     @Mapping(target = "originators", ignore = true)
-    @Mapping(target = "fraud", ignore = true)
-    @Mapping(target = "chargedOff", ignore = true)
+    @Mapping(target = "fraud", source = "fraud")
+    @Mapping(target = "chargeOffReason", source = "chargeOffReason", qualifiedByName = "chargeOffReasonData")
+    @Mapping(target = "writeOffReason", source = "writeOffReason", qualifiedByName = "writeOffReasonData")
     WorkingCapitalLoanData toData(WorkingCapitalLoan loan);
 
     List<WorkingCapitalLoanData> toDataList(List<WorkingCapitalLoan> loans);
@@ -102,6 +106,16 @@ public interface WorkingCapitalLoanMapper {
     @Named("loanStatusData")
     default LoanStatusEnumData loanStatusData(final LoanStatus loanStatus) {
         return LoanEnumerations.status(loanStatus);
+    }
+
+    @Named("chargeOffReasonData")
+    default CodeValueData chargeOffReasonData(final CodeValue chargeOffReason) {
+        return chargeOffReason != null ? chargeOffReason.toData() : null;
+    }
+
+    @Named("writeOffReasonData")
+    default CodeValueData writeOffReasonData(final CodeValue writeOffReason) {
+        return writeOffReason != null ? writeOffReason.toData() : null;
     }
 
     @Named("monetaryCurrencyToCurrencyData")
@@ -119,6 +133,11 @@ public interface WorkingCapitalLoanMapper {
     default StringEnumOptionData delinquencyStartTypeData(final WorkingCapitalLoanProductRelatedDetails detail) {
         return (detail != null && detail.getDelinquencyStartType() != null) ? detail.getDelinquencyStartType().toStringEnumOptionData()
                 : null;
+    }
+
+    @Named("breachStartTypeData")
+    default StringEnumOptionData breachStartTypeData(final WorkingCapitalLoanProductRelatedDetails detail) {
+        return (detail != null && detail.getBreachStartType() != null) ? detail.getBreachStartType().toStringEnumOptionData() : null;
     }
 
     @Named("amortizationTypeData")
@@ -155,17 +174,23 @@ public interface WorkingCapitalLoanMapper {
             timelineData.setDisbursedByLastname(firstDisbursement.getDisbursedBy().getLastname());
             timelineData.setActualDisbursementDate(firstDisbursement.getActualDisbursementDate());
         }
+        timelineData.setClosedOnDate(loan.getClosedOnDate());
         if (loan.getClosedBy() != null) {
             timelineData.setClosedByUsername(loan.getClosedBy().getUsername());
             timelineData.setClosedByFirstname(loan.getClosedBy().getFirstname());
             timelineData.setClosedByLastname(loan.getClosedBy().getLastname());
-            timelineData.setClosedOnDate(loan.getClosedOnDate());
         }
         if (loan.getRejectedBy() != null) {
             timelineData.setRejectedByUsername(loan.getRejectedBy().getUsername());
             timelineData.setRejectedByFirstname(loan.getRejectedBy().getFirstname());
             timelineData.setRejectedByLastname(loan.getRejectedBy().getLastname());
             timelineData.setRejectedOnDate(loan.getRejectedOnDate());
+        }
+        if (loan.getChargedOffBy() != null) {
+            timelineData.setChargedOffByUsername(loan.getChargedOffBy().getUsername());
+            timelineData.setChargedOffByFirstname(loan.getChargedOffBy().getFirstname());
+            timelineData.setChargedOffByLastname(loan.getChargedOffBy().getLastname());
+            timelineData.setChargedOffOnDate(loan.getChargedOffOnDate());
         }
         return timelineData;
     }

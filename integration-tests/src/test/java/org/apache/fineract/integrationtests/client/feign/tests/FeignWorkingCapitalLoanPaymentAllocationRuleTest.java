@@ -238,7 +238,9 @@ public class FeignWorkingCapitalLoanPaymentAllocationRuleTest extends FeignInteg
             Long client = clientHelper.createClient("01 May 2026");
             loanIdHolder[0] = createAndDisburseLoanOnDate(client, BigDecimal.valueOf(40), "01 May 2026",
                     createProductWithChargeAdjustmentOverride());
-            feeLoanChargeIdHolder[0] = addFeeCharge(loanIdHolder[0], 40, "01 May 2026");
+            // Fee is in advance, which is the
+            // precondition this test needs before undoing the adjustment to prove the loan reactivates.
+            feeLoanChargeIdHolder[0] = addFeeCharge(loanIdHolder[0], 40, "01 June 2026");
 
             GetWorkingCapitalLoansLoanIdResponse loanDetails = wcLoanHelper.getLoanDetails(loanIdHolder[0]);
             assertNotNull(loanDetails.getStatus());
@@ -255,8 +257,12 @@ public class FeignWorkingCapitalLoanPaymentAllocationRuleTest extends FeignInteg
 
             GetWorkingCapitalLoansLoanIdResponse loanDetails = wcLoanHelper.getLoanDetails(loanIdHolder[0]);
             assertNotNull(loanDetails.getStatus());
+            assertEquals("loanStatusType.active", loanDetails.getStatus().getCode(), "Loan should remain active");
+            adjustmentTransactionIdHolder[0] = wcLoanHelper.makeRepayment(loanIdHolder[0],
+                    WorkingCapitalLoanRequestBuilders.repayment(BigDecimal.valueOf(40), "05 May 2026"));
+            loanDetails = wcLoanHelper.getLoanDetails(loanIdHolder[0]);
             assertEquals("loanStatusType.closed.obligations.met", loanDetails.getStatus().getCode(),
-                    "Loan should be closed once the charge adjustment pays off the remaining principal");
+                    "Loan should be closed once the charge adjustment pays off the remaining principal and repayment pays of the charge");
         });
         businessDateHelper.runAt("2026-05-10", () -> {
             wcLoanHelper.undoLoanTransaction(loanIdHolder[0], adjustmentTransactionIdHolder[0],
@@ -268,8 +274,8 @@ public class FeignWorkingCapitalLoanPaymentAllocationRuleTest extends FeignInteg
             assertEquals(Boolean.TRUE, reversedAdjustment.getReversed());
 
             GetBalance afterUndo = balanceOf(loanIdHolder[0]);
-            assertEqualBigDecimal(BigDecimal.ZERO, afterUndo.getPrincipalPaid());
-            assertEqualBigDecimal(BigDecimal.valueOf(40), afterUndo.getPrincipalOutstanding());
+            assertEqualBigDecimal(BigDecimal.valueOf(40), afterUndo.getPrincipalPaid());
+            assertEqualBigDecimal(BigDecimal.ZERO, afterUndo.getPrincipalOutstanding());
 
             assertEquals("loanStatusType.active", wcLoanHelper.getLoanDetails(loanIdHolder[0]).getStatus().getCode(),
                     "Loan must reactivate once the undo brings principal outstanding back above zero");
